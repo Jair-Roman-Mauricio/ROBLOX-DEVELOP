@@ -23,6 +23,18 @@ Convención de archivos (Rojo por defecto): `x.server.luau` = Script, `x.client.
 
 Formato y lint: `stylua src` y `selene src`.
 
+## Probar el juego sin configurar nada
+
+El repo no guarda archivos `.rbxl` (se generan desde el código). Para tener un place jugable:
+
+```bash
+rojo build prueba.project.json -o SelvaPrueba.rbxl
+```
+
+Abre `SelvaPrueba.rbxl` en Roblox Studio y pulsa **Play**. Ya trae `SelvaProcedural = true`, `Lighting.Technology = Future` y los modelos de `assets/`. Es un place local de prueba: no lo subas al repo ni lo publiques encima del place del equipo.
+
+Si no tienes Rojo: `rokit install` (o `brew install rojo` en macOS).
+
 ## Agentes de IA
 
 Cualquier agente que trabaje en este repo debe seguir [`AGENTS.md`](AGENTS.md): leer [`CONTEXT.md`](CONTEXT.md), consultar el baúl de Obsidian *LihFolk Vault V1* y trabajar en ramas que salen de `dev` y vuelven a `dev` por PR.
