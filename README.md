@@ -22,3 +22,7 @@ Convención de archivos (Rojo por defecto): `x.server.luau` = Script, `x.client.
 3. En Studio: Plugins → Rojo → **Connect**.
 
 Formato y lint: `stylua src` y `selene src`.
+
+## Agentes de IA
+
+Cualquier agente que trabaje en este repo debe seguir [`AGENTS.md`](AGENTS.md): leer [`CONTEXT.md`](CONTEXT.md), consultar el baúl de Obsidian *LihFolk Vault V1* y trabajar en ramas que salen de `dev` y vuelven a `dev` por PR.
