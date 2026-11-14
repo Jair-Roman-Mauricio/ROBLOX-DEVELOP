@@ -10,6 +10,8 @@
 	`estrellado` lo ensucia, lo inclina, rompe palas y cola, y añade humo, fuego y restos.
 ]]
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Kit = require(script.Parent.Kit)
 
 local M = Enum.Material
@@ -18,7 +20,165 @@ local Helicoptero = {}
 
 local SIN = { colision = false } :: Kit.Opciones
 
+-- Medidas del modelo de Blender (art/blender/build_helicoptero.py), relativas al pivote en el suelo.
+local AMZ = {
+	CENTRO_CASCO = Vector3.new(0, 7.068, 5.395), -- centro de la caja del MeshPart Casco
+	ROTOR_EJE = Vector3.new(0, 11.75, -0.6),
+	COLA_EJE = Vector3.new(0.62, 10.9, 23.7),
+	PUERTA_CENTRO_Z = -3.5,
+	PUERTA_RECORRIDO = 4.5,
+}
+local VIDRIOS = { Vidrios = true, VidrioPuerta = true }
+
+-- Modelo importado con el 3D Importer (HelicopteroAMZ07 en ReplicatedStorage o en ReplicatedStorage.Modelos).
+local function plantilla(): Model?
+	local modelos = ReplicatedStorage:FindFirstChild("Modelos")
+	local m = ReplicatedStorage:FindFirstChild("HelicopteroAMZ07")
+		or (modelos and modelos:FindFirstChild("HelicopteroAMZ07"))
+	return if m and m:IsA("Model") then m else nil
+end
+
+-- Helicóptero de mallas: mismos hijos con nombre fijo que la versión de partes.
+local function desdeMallas(molde: Model, cf: CFrame, padre: Instance): Model?
+	local mallas: { [string]: BasePart } = {}
+	for _, d in molde:GetDescendants() do
+		if d:IsA("BasePart") then
+			mallas[d.Name] = d
+		end
+	end
+	local casco = mallas.Casco
+	if not casco then
+		warn("[Selva] HelicopteroAMZ07 sin MeshPart 'Casco'; uso el helicóptero de partes")
+		return nil
+	end
+	local ref = casco.CFrame
+	local origen = cf * CFrame.new(AMZ.CENTRO_CASCO)
+
+	local m = Kit.modelo("Helicoptero", padre)
+	local function colocar(nombre: string, grupo: Instance): BasePart?
+		local original = mallas[nombre]
+		if not original then
+			return nil
+		end
+		local parte = original:Clone()
+		for _, h in parte:GetChildren() do
+			if h:IsA("BasePart") then
+				h:Destroy()
+			end
+		end
+		parte.Anchored = true
+		parte.CanCollide = false
+		parte.CanTouch = false
+		parte.CFrame = origen * ref:ToObjectSpace(original.CFrame)
+		if VIDRIOS[nombre] then
+			-- el importador no trae el cristal del GLB: material Glass tintado
+			for _, h in parte:GetChildren() do
+				if h:IsA("SurfaceAppearance") then
+					h:Destroy()
+				end
+			end
+			if parte:IsA("MeshPart") then
+				parte.TextureID = ""
+			end
+			parte.Material = M.Glass
+			parte.Color = Color3.fromRGB(58, 92, 104)
+			parte.Transparency = 0.45
+			parte.Reflectance = 0.3
+			parte.CastShadow = false
+		end
+		parte.Parent = grupo
+		return parte
+	end
+	local function eje(grupo: Model, pos: Vector3)
+		local e = Kit.parte(grupo, cf * CFrame.new(pos), Vector3.one * 0.4, Color3.new(), M.SmoothPlastic, {
+			transparencia = 1,
+			colision = false,
+			consulta = false,
+			nombre = "Eje",
+		})
+		grupo.PrimaryPart = e
+	end
+
+	for _, nombre in { "Casco", "Vidrios", "Motores", "Tren", "Detalles", "Interior", "Rampa" } do
+		colocar(nombre, m)
+	end
+	-- "Interior" es la parte ancla que usan la cinemática y Partida
+	for _, nombre in { "Interior", "Rampa" } do
+		local malla = m:FindFirstChild(nombre)
+		if malla then
+			malla.Name = nombre .. "Malla"
+		end
+	end
+	local rotor = Kit.modelo("Rotor", m)
+	eje(rotor, AMZ.ROTOR_EJE)
+	colocar("Rotor", rotor)
+	local cola = Kit.modelo("RotorCola", m)
+	eje(cola, AMZ.COLA_EJE)
+	colocar("RotorCola", cola)
+	local puerta = Kit.modelo("Puerta", m)
+	puerta:SetAttribute("Recorrido", AMZ.PUERTA_RECORRIDO)
+	local hoja = colocar("Puerta", puerta)
+	if hoja then
+		hoja.Name = "Hoja"
+		puerta.PrimaryPart = hoja
+	end
+	colocar("VidrioPuerta", puerta)
+
+	-- colisión simple del fuselaje y del botalón
+	local function colision(c: CFrame, tam: Vector3)
+		Kit.parte(m, c, tam, Color3.new(), M.SmoothPlastic, { transparencia = 1, sombra = false, nombre = "Colision" })
+	end
+	colision(cf * CFrame.new(0, 5, -2.4), Vector3.new(7.6, 6.8, 23.6))
+	colision(cf * CFrame.new(0, 7.8, 16), Vector3.new(2.6, 2.4, 16))
+
+	-- luces: baliza roja del lomo, navegación y luz de la bodega
+	local baliza =
+		Kit.parte(m, cf * CFrame.new(0, 10.05, 2.6), Vector3.one * 0.4, Color3.fromRGB(255, 40, 30), M.Neon, {
+			colision = false,
+			sombra = false,
+			forma = Enum.PartType.Ball,
+		})
+	Kit.luz(baliza, Color3.fromRGB(255, 50, 40), 14, 1.6)
+	Kit.etiquetar(baliza, "Baliza")
+	for _, s in { -1, 1 } do
+		local nav = Kit.parte(
+			m,
+			cf * CFrame.new(s * 3.2, 4.3, -9.4),
+			Vector3.one * 0.3,
+			if s < 0 then Color3.fromRGB(255, 50, 40) else Color3.fromRGB(60, 255, 110),
+			M.Neon,
+			{ forma = Enum.PartType.Ball, colision = false, sombra = false }
+		)
+		Kit.luz(nav, nav.Color, 6, 1)
+	end
+	local lampara = Kit.parte(m, cf * CFrame.new(0, 7.8, -1), Vector3.one * 0.3, Color3.new(), M.SmoothPlastic, {
+		transparencia = 1,
+		colision = false,
+		consulta = false,
+	})
+	Kit.luz(lampara, Color3.fromRGB(255, 220, 170), 12, 0.8)
+
+	-- punto de embarque frente a la puerta (la cinemática mide desde aquí)
+	local cabina = Instance.new("Attachment")
+	cabina.Name = "Cabina"
+	cabina.Parent =
+		Kit.parte(m, cf * CFrame.new(0, 4.6, AMZ.PUERTA_CENTRO_Z - 0.4), Vector3.one, Color3.new(), M.SmoothPlastic, {
+			transparencia = 1,
+			colision = false,
+			consulta = false,
+			nombre = "Interior",
+		})
+	return m
+end
+
 function Helicoptero.construir(rng: Random, cf: CFrame, padre: Instance, estrellado: boolean): Model
+	local molde = if estrellado then nil else plantilla()
+	if molde then
+		local m = desdeMallas(molde, cf, padre)
+		if m then
+			return m
+		end
+	end
 	local m = Kit.modelo(if estrellado then "HelicopteroEstrellado" else "Helicoptero", padre)
 	local sucio = Color3.fromRGB(46, 42, 36)
 	local function tono(c: Color3): Color3

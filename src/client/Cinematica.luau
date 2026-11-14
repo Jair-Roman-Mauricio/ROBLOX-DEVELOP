@@ -200,6 +200,7 @@ function Cinematica.reproducir(helipuerto: Model?, protagonista: Player?)
 		local rotor = clon:FindFirstChild("Rotor") :: Model?
 		local colaRotor = clon:FindFirstChild("RotorCola") :: Model?
 		local puerta = clon:FindFirstChild("Puerta") :: Model?
+		local recorrido = (puerta and puerta:GetAttribute("Recorrido") or 4.2) :: number
 		local ejeRotor = if rotor and rotor.PrimaryPart
 			then base:ToObjectSpace(rotor.PrimaryPart.CFrame)
 			else CFrame.identity
@@ -330,7 +331,7 @@ function Cinematica.reproducir(helipuerto: Model?, protagonista: Player?)
 			anguloCola += velRotor * 2.4 * dt
 			-- puerta: se desliza despacio (3.2–4.6) y se cierra de golpe (5.8–6.05)
 			local abierta = tramo(t, 3.2, 4.6) * (1 - tramo(t, 5.8, 6.05))
-			local deslizar = CFrame.new(0.3 * math.min(1, abierta * 4), 0, 4.2 * abierta)
+			local deslizar = CFrame.new(0.3 * math.min(1, abierta * 4), 0, recorrido * abierta)
 			local giroRotor = cfHeli * ejeRotor * CFrame.Angles(0, anguloRotor, 0)
 			local giroCola = cfHeli * ejeCola * CFrame.Angles(anguloCola, 0, 0)
 			for i, p in piezas do
