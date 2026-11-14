@@ -1,8 +1,8 @@
 --!strict
 --[[
-	Cola de los helipuertos del lobby. Quien pisa un helipuerto se une a su vuelo (máx. 4);
+	Cola de los helipuertos del lobby. Quien se acerca a un helicóptero se une a su vuelo (máx. 4);
 	al entrar el primero empieza la cuenta atrás, que se acorta con el equipo completo.
-	Salir de la plataforma cancela la plaza. El servidor decide todo por posición: el cliente
+	Alejarse del helicóptero cancela la plaza. El servidor decide todo por posición: el cliente
 	solo muestra los atributos `Portal` del jugador y `Jugadores`/`Cuenta` del helipuerto.
 ]]
 
@@ -35,7 +35,7 @@ end
 
 local function dentro(portal: Lobby.Portal, pos: Vector3): boolean
 	local d = Vector2.new(pos.X - portal.centro.X, pos.Z - portal.centro.Z).Magnitude
-	return d <= L.RADIO_HELIPUERTO and pos.Y > portal.centro.Y - 3 and pos.Y < portal.centro.Y + 16
+	return d <= L.RADIO_EMBARQUE and pos.Y > portal.centro.Y - 8 and pos.Y < portal.centro.Y + 20
 end
 
 local function expulsar(pl: Player, portal: Lobby.Portal, pos: Vector3)
@@ -47,7 +47,7 @@ local function expulsar(pl: Player, portal: Lobby.Portal, pos: Vector3)
 	if dir.Magnitude < 0.1 then
 		dir = Vector3.zAxis
 	end
-	char:PivotTo(CFrame.new(portal.centro + dir.Unit * (L.RADIO_HELIPUERTO + 6) + Vector3.new(0, 4, 0)))
+	char:PivotTo(CFrame.new(portal.centro + dir.Unit * (L.RADIO_EMBARQUE + 5) + Vector3.new(0, 4, 0)))
 end
 
 local function pintar(portal: Lobby.Portal, n: number, restante: number?, listo: boolean, motivo: string)
@@ -58,7 +58,7 @@ local function pintar(portal: Lobby.Portal, n: number, restante: number?, listo:
 	end
 	local texto
 	if n == 0 then
-		texto = if listo then "Sube para embarcar" else motivo
+		texto = if listo then "Acércate para embarcar" else motivo
 	elseif not listo then
 		texto = ("%d/%d · %s"):format(n, MAX, motivo)
 	elseif restante then
@@ -71,7 +71,11 @@ local function pintar(portal: Lobby.Portal, n: number, restante: number?, listo:
 	portal.modelo:SetAttribute("Cuenta", restante or -1)
 end
 
-function Portales.iniciar(portales: { Lobby.Portal }, puedeIniciar: () -> (boolean, string), lanzar: ({ Player }) -> ())
+function Portales.iniciar(
+	portales: { Lobby.Portal },
+	puedeIniciar: () -> (boolean, string),
+	lanzar: ({ Player }, Model) -> ()
+)
 	local miembros: { { Player } } = {}
 	local fin: { [number]: number } = {}
 	for i in portales do
@@ -127,7 +131,7 @@ function Portales.iniciar(portales: { Lobby.Portal }, puedeIniciar: () -> (boole
 					end
 					lanzado = true
 					listo, motivo = false, "Expedición en curso"
-					task.spawn(lanzar, grupo)
+					task.spawn(lanzar, grupo, portal.modelo)
 				end
 			end
 			local restante = if fin[i] then math.max(0, math.ceil(fin[i] - ahora)) else nil

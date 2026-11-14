@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Estructuras = require(script.Parent.Parent.Modelos.Estructuras)
+local Helicoptero = require(script.Parent.Parent.Modelos.Helicoptero)
 local Kit = require(script.Parent.Parent.Modelos.Kit)
 local Terreno = require(script.Parent.Terreno)
 
@@ -134,7 +135,7 @@ function Zonas.helicoptero(rng: Random, centro: Vector3, datos: Terreno.Datos, p
 		local q = (CFrame.new(centro) * giro * CFrame.new(x, 0, z)).Position
 		return CFrame.new(suelo(datos, q.X, q.Z)) * giro
 	end
-	Estructuras.helicoptero(rng, en(0, 0), m, true)
+	Helicoptero.construir(rng, en(0, 0), m, true)
 	Estructuras.radar(rng, en(-16, 6) * CFrame.Angles(0, 0.6, 0), m)
 	Estructuras.pilaCajas(rng, en(14, -10), m)
 	Estructuras.maletas(rng, en(-6, -16), m)

@@ -52,6 +52,7 @@ function Ambiente.iniciar()
 	local atmosfera = asegurar("Atmosphere") :: Atmosphere
 	local bloom = asegurar("BloomEffect", "SelvaBloom") :: BloomEffect
 	local color = asegurar("ColorCorrectionEffect", "SelvaColor") :: ColorCorrectionEffect
+	local rayos = asegurar("SunRaysEffect", "SelvaRayos") :: SunRaysEffect
 	local cielo = asegurar("Sky") :: Sky
 	cielo.StarCount = 3000
 	cielo.MoonAngularSize = 14
@@ -128,6 +129,7 @@ function Ambiente.iniciar()
 		ir(atmosfera, preset.Atmosphere)
 		ir(bloom, preset.Bloom)
 		ir(color, preset.Color)
+		ir(rayos, preset.Rayos)
 		luciernagas.Rate = preset.Luciernagas
 		niebla.Rate = preset.Niebla
 	end

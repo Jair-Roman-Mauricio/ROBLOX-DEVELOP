@@ -148,6 +148,7 @@ function Generador.generar(semilla: number, padre: Instance, progreso: (number, 
 	Terreno.escribir(datos, function(f)
 		progreso(0.05 + f * 0.45, "Esculpiendo el terreno")
 	end)
+	Terreno.estilo()
 	limites(carpeta)
 
 	local rng = Random.new(semilla + 1)

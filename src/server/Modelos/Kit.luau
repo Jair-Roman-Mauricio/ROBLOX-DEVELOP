@@ -70,6 +70,27 @@ function Kit.parte(
 	return p
 end
 
+-- Elipsoide: parte con SpecialMesh esférica que se estira al tamaño de la parte. Sirve para
+-- cascos y carenados curvos. La colisión sería la caja entera, así que por defecto no colisiona.
+function Kit.ovoide(
+	padre: Instance,
+	cf: CFrame,
+	tam: Vector3,
+	color: Color3,
+	material: Enum.Material,
+	o: Opciones?
+): BasePart
+	local op: Opciones = table.clone(o or {})
+	if op.colision == nil then
+		op.colision = false
+	end
+	local p = Kit.parte(padre, cf, tam, color, material, op)
+	local malla = Instance.new("SpecialMesh")
+	malla.MeshType = Enum.MeshType.Sphere
+	malla.Parent = p
+	return p
+end
+
 local function arriba(dir: Vector3): Vector3
 	if math.abs(dir.Unit.Y) > 0.98 then
 		return Vector3.xAxis

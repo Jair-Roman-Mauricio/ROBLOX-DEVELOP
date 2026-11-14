@@ -8,7 +8,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Campamento = require(script.Parent.Parent.Modelos.Campamento)
 local Estructuras = require(script.Parent.Parent.Modelos.Estructuras)
+local Helicoptero = require(script.Parent.Parent.Modelos.Helicoptero)
 local Kit = require(script.Parent.Parent.Modelos.Kit)
 local Vegetacion = require(script.Parent.Parent.Modelos.Vegetacion)
 
@@ -34,6 +36,10 @@ local Lobby = {}
 
 local CREMA = Color3.fromRGB(244, 232, 206)
 local AMBAR = Color3.fromRGB(255, 176, 70)
+
+local function diferencia(a: number, b: number): number
+	return (a - b + math.pi) % (2 * math.pi) - math.pi
+end
 
 local function cartelFlotante(padre: BasePart, indice: number): (TextLabel, TextLabel)
 	local gui = Instance.new("BillboardGui")
@@ -132,10 +138,14 @@ local function helipuerto(rng: Random, indice: number, centro: Vector3, mirar: V
 	end
 
 	-- morro hacia la plaza; la cola sobresale por detrás de la plataforma
-	local heli = Estructuras.helicoptero(rng, cf * CFrame.new(0, 1.4, 0), m, false)
+	local heli = Helicoptero.construir(rng, cf * CFrame.new(0, 1.4, 0), m, false)
 	local rotor = heli:FindFirstChild("Rotor")
 	if rotor then
 		Kit.etiquetar(rotor, "RotorLobby")
+	end
+	local cola = heli:FindFirstChild("RotorCola")
+	if cola then
+		Kit.etiquetar(cola, "RotorColaLobby")
 	end
 	local foco = Kit.parte(m, cf * CFrame.new(0, 7, -R - 1), Vector3.one * 0.6, AMBAR, M.Neon, Kit.FOLLAJE)
 	Kit.luz(foco, Color3.fromRGB(255, 200, 140), 34, 1.6)
@@ -210,7 +220,7 @@ local function cartelPrincipal(cf: CFrame, padre: Instance)
 	texto("SELVA", 0.06, 0.42, Enum.Font.Merriweather, CREMA)
 	texto("EXPEDICIONES AMAZONAS", 0.5, 0.14, Enum.Font.GothamMedium, AMBAR)
 	texto(
-		"Sube a un helipuerto con tu equipo (máx. 4). El vuelo despega solo.",
+		"Acércate a un helicóptero con tu equipo (máx. 4). El vuelo despega solo.",
 		0.7,
 		0.2,
 		Enum.Font.GothamMedium,
@@ -238,10 +248,28 @@ function Lobby.construir(): Lobby
 			if i % 3 == 0 then M.Rock else M.LeafyGrass
 		)
 	end
+	-- cordillera lejana: horizonte para la cinemática del despegue
+	for i = 1, 16 do
+		local a = (i + rng:NextNumber(-0.3, 0.3)) / 16 * math.pi * 2
+		local r = rng:NextNumber(330, 430)
+		terreno:FillBall(
+			c + Vector3.new(math.cos(a) * r, rng:NextNumber(-60, -25), math.sin(a) * r),
+			rng:NextNumber(70, 110),
+			if i % 2 == 0 then M.Rock else M.LeafyGrass
+		)
+	end
 	local suelo = (Kit.suelo(c.X, c.Z) or c).Y
+	local plaza = Vector3.new(c.X, suelo, c.Z)
+
+	-- laguna al sur, detrás del punto de aparición
+	local laguna = plaza + Vector3.new(0, 0, 108)
+	local RADIO_LAGUNA = 30
+	local nivelAgua = suelo - 1
+	terreno:FillCylinder(CFrame.new(laguna + Vector3.new(0, 2, 0)), 6, RADIO_LAGUNA, M.Air)
+	terreno:FillCylinder(CFrame.new(laguna - Vector3.new(0, 4, 0)), 6, RADIO_LAGUNA, M.Water)
+	terreno:FillCylinder(CFrame.new(laguna - Vector3.new(0, 7.5, 0)), 1, RADIO_LAGUNA + 4, M.Mud)
 
 	-- plaza de madera
-	local plaza = Vector3.new(c.X, suelo, c.Z)
 	Kit.parte(
 		carpeta,
 		CFrame.new(plaza + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.pi / 2),
@@ -251,7 +279,21 @@ function Lobby.construir(): Lobby
 		{ forma = Enum.PartType.Cylinder }
 	)
 	Estructuras.fogon(rng, CFrame.new(plaza + Vector3.new(0, 1, 0)), carpeta, true)
-	cartelPrincipal(CFrame.lookAt(plaza + Vector3.new(-17, 1, 14), plaza + Vector3.new(0, 1, 34)), carpeta)
+	for i = 1, 5 do
+		local a = i / 5 * math.pi * 2 + 0.3
+		local centro = plaza + Vector3.new(math.cos(a) * 7.5, 1.7, math.sin(a) * 7.5)
+		local tangente = Vector3.new(-math.sin(a), 0, math.cos(a))
+		Kit.cilindro(
+			carpeta,
+			centro - tangente * 2.6,
+			centro + tangente * 2.6,
+			1.6,
+			Kit.variar(Color3.fromRGB(104, 78, 54), rng, 0.05),
+			M.Wood
+		)
+	end
+	-- arco de entrada al sur, de cara a la plaza, sobre la pasarela que baja al muelle
+	cartelPrincipal(CFrame.lookAt(plaza + Vector3.new(0, 1, 37), plaza + Vector3.new(0, 1, 0)), carpeta)
 
 	-- postes con guirnaldas y faroles
 	local postes = {}
@@ -299,6 +341,83 @@ function Lobby.construir(): Lobby
 		local pie = Vector3.new(0, 1.2, 0)
 		Estructuras.barril(rng, CFrame.new(hasta - pie + lado * 6), carpeta)
 		Estructuras.pilaCajas(rng, CFrame.new(hasta - pie - lado * 7), carpeta)
+		local baseFarol = desde:Lerp(hasta, 0.5) - Vector3.new(0, 0.8, 0) + lado * 4.6
+		Campamento.farol(CFrame.lookAt(baseFarol, baseFarol + dir), carpeta)
+	end
+
+	-- barandilla de la plaza con huecos en las pasarelas y en la salida sur
+	local huecos = { math.pi / 2 }
+	for _, portal in portales do
+		local d = portal.centro - plaza
+		table.insert(huecos, math.atan2(d.Z, d.X))
+	end
+	local function abierto(a: number): boolean
+		for _, h in huecos do
+			if math.abs(diferencia(a, h)) < 0.14 then
+				return true
+			end
+		end
+		return false
+	end
+	local madera = Color3.fromRGB(104, 80, 56)
+	local N = 56
+	for i = 0, N - 1 do
+		local a, b = i / N * math.pi * 2, (i + 1) / N * math.pi * 2
+		local pa = plaza + Vector3.new(math.cos(a) * 32.4, 0, math.sin(a) * 32.4)
+		local pb = plaza + Vector3.new(math.cos(b) * 32.4, 0, math.sin(b) * 32.4)
+		if not abierto(a) then
+			Kit.cilindro(carpeta, pa, pa + Vector3.new(0, 3.4, 0), 0.4, madera, M.Wood)
+			if not abierto(b) then
+				Kit.cilindro(carpeta, pa + Vector3.new(0, 3.1, 0), pb + Vector3.new(0, 3.1, 0), 0.3, madera, M.Wood)
+				Kit.cilindro(carpeta, pa + Vector3.new(0, 1.8, 0), pb + Vector3.new(0, 1.8, 0), 0.22, madera, M.Wood)
+			end
+		end
+	end
+
+	-- base de operaciones: torre entre los helipuertos centrales, pabellón, jeep, combustible y muelle
+	local objetivos = {}
+	for _, portal in portales do
+		table.insert(objetivos, portal.centro + Vector3.new(0, 2, 0))
+	end
+	local torre = plaza + Vector3.new(0, 0, -50)
+	Campamento.torre(CFrame.lookAt(torre, plaza), carpeta, objetivos)
+	local pabellon = plaza + Vector3.new(-72, 0, 34)
+	Campamento.pabellon(rng, CFrame.lookAt(pabellon, plaza), carpeta)
+	Campamento.jeep(CFrame.lookAt(plaza + Vector3.new(50, 0, 44), plaza + Vector3.new(30, 0, 20)), carpeta)
+	local deposito = plaza + Vector3.new(80, 0, 10)
+	Campamento.combustible(rng, CFrame.lookAt(deposito, plaza), carpeta)
+	local orilla = laguna + Vector3.new(0, 0, -RADIO_LAGUNA - 3)
+	Kit.viga(
+		carpeta,
+		plaza + Vector3.new(0, 0.6, 32),
+		orilla + Vector3.new(0, 0.6, 0),
+		6,
+		0.5,
+		Color3.fromRGB(122, 94, 62),
+		M.WoodPlanks
+	)
+	Campamento.muelle(rng, CFrame.lookAt(orilla, Vector3.new(orilla.X, orilla.Y, laguna.Z)), 20, nivelAgua, carpeta)
+	Campamento.canoa(
+		rng,
+		CFrame.new(laguna + Vector3.new(-9, nivelAgua - suelo - 0.5, -12)) * CFrame.Angles(0, 0.4, 0),
+		carpeta
+	)
+	Campamento.canoa(
+		rng,
+		CFrame.new(laguna + Vector3.new(14, nivelAgua - suelo - 0.5, -4)) * CFrame.Angles(0, -0.2, 0),
+		carpeta
+	)
+
+	-- rocas en la orilla de la laguna, dejando libre el muelle
+	for i = 1, 18 do
+		local a = i / 18 * math.pi * 2 + rng:NextNumber(-0.1, 0.1)
+		if math.abs(diferencia(a, -math.pi / 2)) > 0.3 then
+			local r = RADIO_LAGUNA + rng:NextNumber(0, 3)
+			local p = Kit.suelo(laguna.X + math.cos(a) * r, laguna.Z + math.sin(a) * r)
+			if p then
+				Vegetacion.roca(rng, p, carpeta)
+			end
+		end
 	end
 
 	-- tiendas del campamento
@@ -309,6 +428,13 @@ function Lobby.construir(): Lobby
 	local veg = Instance.new("Folder")
 	veg.Name = "Vegetacion"
 	veg.Parent = carpeta
+	local ocupado: { { centro: Vector3, radio: number } } = {
+		{ centro = torre, radio = 12 },
+		{ centro = pabellon, radio = 24 },
+		{ centro = deposito, radio = 14 },
+		{ centro = laguna, radio = RADIO_LAGUNA + 6 },
+		{ centro = plaza + Vector3.new(50, 0, 44), radio = 10 },
+	}
 	local function libre(p: Vector3): boolean
 		for _, portal in portales do
 			if
@@ -318,9 +444,14 @@ function Lobby.construir(): Lobby
 				return false
 			end
 		end
+		for _, zona in ocupado do
+			if (Vector3.new(p.X, 0, p.Z) - Vector3.new(zona.centro.X, 0, zona.centro.Z)).Magnitude < zona.radio then
+				return false
+			end
+		end
 		return (p - plaza).Magnitude > 48
 	end
-	for _ = 1, 260 do
+	for _ = 1, 420 do
 		local a = rng:NextNumber(0, math.pi * 2)
 		local r = rng:NextNumber(50, L.RADIO_LIMITE + 30)
 		local x, z = plaza.X + math.cos(a) * r, plaza.Z + math.sin(a) * r

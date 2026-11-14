@@ -8,3 +8,4 @@ end
 require(script.Ambiente).iniciar()
 require(script.Efectos).iniciar()
 require(script.Interfaz).iniciar()
+require(script.Cinematica).iniciar()

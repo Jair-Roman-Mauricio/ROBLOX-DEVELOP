@@ -6,6 +6,8 @@
 	  Glifo      → pulso de los tótems
 	  PlatoRadar → giro lento del plato
 	  RotorLobby → rotor de los helicópteros del lobby; gira más rápido con gente a bordo
+	  RotorColaLobby → rotor de cola (eje X), al ritmo del principal
+	  Manga      → manga de viento que ondea
 	Se ejecutan a ~20 Hz salvo los rotores (cada frame).
 ]]
 
@@ -34,7 +36,10 @@ function Efectos.iniciar()
 	local glifos = conjunto("Glifo")
 	local platos = conjunto("PlatoRadar")
 	local rotores = conjunto("RotorLobby")
+	local colas = conjunto("RotorColaLobby")
+	local mangas = conjunto("Manga")
 	local brilloBase: { [Instance]: number } = setmetatable({}, { __mode = "k" }) :: any
+	local giroManga: { [Instance]: number } = setmetatable({}, { __mode = "k" }) :: any
 	local velocidad: { [Instance]: number } = setmetatable({}, { __mode = "k" }) :: any
 
 	local acumulado = 0
@@ -50,6 +55,14 @@ function Efectos.iniciar()
 				v += (objetivo - v) * math.min(1, dt * 0.8)
 				velocidad[rotor] = v
 				rotor:PivotTo(rotor:GetPivot() * CFrame.Angles(0, v * dt, 0))
+			end
+		end
+		for cola, _ in colas do
+			if cola:IsA("Model") and cola.PrimaryPart then
+				local heli = cola.Parent
+				local rotor = heli and heli:FindFirstChild("Rotor")
+				local v = if rotor then velocidad[rotor] or 0.6 else 0.6
+				cola:PivotTo(cola:GetPivot() * CFrame.Angles(v * 2.4 * dt, 0, 0))
 			end
 		end
 
@@ -83,6 +96,14 @@ function Efectos.iniciar()
 		for parte, fase in glifos do
 			if parte:IsA("BasePart") then
 				parte.Transparency = 0.2 + 0.35 * (0.5 + 0.5 * math.sin(t * 1.3 + fase))
+			end
+		end
+		for manga, fase in mangas do
+			if manga:IsA("Model") and manga.PrimaryPart then
+				-- oscila alrededor de su orientación original
+				local giro = 0.3 * math.noise(t * 0.3, fase)
+				manga:PivotTo(manga:GetPivot() * CFrame.Angles(0, giro - (giroManga[manga] or 0), 0))
+				giroManga[manga] = giro
 			end
 		end
 		for plato, _ in platos do

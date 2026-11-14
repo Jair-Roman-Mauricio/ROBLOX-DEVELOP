@@ -23,6 +23,7 @@ estado:SetAttribute("Etapa", "")
 local Remotes = {
 	Aviso = evento("Aviso"), -- servidor → cliente: (texto, segundos?)
 	Transicion = evento("Transicion"), -- servidor → cliente: (texto) fundido a negro
+	Cinematica = evento("Cinematica"), -- servidor → cliente: (helipuerto: Model) despegue
 	Estado = estado,
 }
 

@@ -342,19 +342,28 @@ function Terreno.escribir(datos: Datos, progreso: (number) -> ())
 			task.wait()
 		end
 	end
+end
 
-	terreno.Decoration = true
-	terreno:SetMaterialColor(M.Grass, Color3.fromRGB(58, 92, 46))
-	terreno:SetMaterialColor(M.LeafyGrass, Color3.fromRGB(64, 90, 48))
-	terreno:SetMaterialColor(M.Mud, Color3.fromRGB(72, 58, 44))
-	terreno:SetMaterialColor(M.Ground, Color3.fromRGB(96, 78, 58))
-	terreno:SetMaterialColor(M.Rock, Color3.fromRGB(92, 94, 86))
-	terreno:SetMaterialColor(M.Basalt, Color3.fromRGB(40, 38, 36))
-	terreno.WaterColor = Color3.fromRGB(34, 58, 52)
-	terreno.WaterTransparency = 0.55
-	terreno.WaterReflectance = 0.6
-	terreno.WaterWaveSize = 0.12
-	terreno.WaterWaveSpeed = 6
+-- Colores del terreno y del agua. Terrain.Decoration (hierba 3D) NO se puede cambiar desde
+-- scripts en juego (requiere capacidad de plugin): se activa a mano en Studio.
+function Terreno.estilo()
+	local terreno = workspace.Terrain
+	local ok, err = pcall(function()
+		terreno:SetMaterialColor(M.Grass, Color3.fromRGB(58, 92, 46))
+		terreno:SetMaterialColor(M.LeafyGrass, Color3.fromRGB(64, 90, 48))
+		terreno:SetMaterialColor(M.Mud, Color3.fromRGB(72, 58, 44))
+		terreno:SetMaterialColor(M.Ground, Color3.fromRGB(96, 78, 58))
+		terreno:SetMaterialColor(M.Rock, Color3.fromRGB(92, 94, 86))
+		terreno:SetMaterialColor(M.Basalt, Color3.fromRGB(40, 38, 36))
+		terreno.WaterColor = Color3.fromRGB(34, 58, 52)
+		terreno.WaterTransparency = 0.55
+		terreno.WaterReflectance = 0.6
+		terreno.WaterWaveSize = 0.12
+		terreno.WaterWaveSpeed = 6
+	end)
+	if not ok then
+		warn("[Selva] no se pudo ajustar el estilo del terreno: " .. tostring(err))
+	end
 end
 
 -- Borra solo la región del mapa (el lobby tiene su propio terreno).

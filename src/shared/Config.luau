@@ -13,10 +13,12 @@ Config.MAX_POR_EQUIPO = 4
 Config.Lobby = {
 	CENTRO = Vector3.new(0, 60, 1700), -- lejos del mapa para que nunca se vean
 	VUELOS = 4,
-	CUENTA_ATRAS = 15, -- segundos desde que sube el primer jugador
+	CUENTA_ATRAS = 15, -- segundos desde que se acerca el primer jugador; al terminar despega aunque vaya uno solo
 	CUENTA_EQUIPO_LLENO = 5, -- segundos cuando el equipo ya es de 4
 	RADIO_HELIPUERTO = 15,
-	RADIO_LIMITE = 150,
+	RADIO_EMBARQUE = 22, -- basta con estar a esta distancia del helicóptero
+	RADIO_LIMITE = 170,
+	CINEMATICA = 12, -- segundos de la cinemática de despegue
 }
 
 Config.Mapa = {
@@ -50,30 +52,33 @@ Config.Partida = {
 -- (07 Lighting VFX and Audio/Stylized Lighting Recipes): la noche se marca con tono azul y
 -- menos saturación, no con oscuridad. Debe verse una silueta a 50 studs.
 Config.Iluminacion = {
+	-- receta "Golden hour" del baúl: sol bajo, sombras largas, arriba cálido y abajo violeta
 	Lobby = {
 		Lighting = {
-			ClockTime = 18.2,
-			Brightness = 2,
-			Ambient = Color3.fromRGB(78, 66, 80),
-			OutdoorAmbient = Color3.fromRGB(128, 106, 112),
-			ColorShift_Top = Color3.fromRGB(255, 186, 130),
-			ColorShift_Bottom = Color3.fromRGB(40, 30, 50),
+			ClockTime = 17.6,
+			GeographicLatitude = 30,
+			Brightness = 2.2,
+			Ambient = Color3.fromRGB(90, 70, 70),
+			OutdoorAmbient = Color3.fromRGB(130, 100, 90),
+			ColorShift_Top = Color3.fromRGB(255, 190, 120),
+			ColorShift_Bottom = Color3.fromRGB(60, 40, 80),
 			EnvironmentDiffuseScale = 0.4,
-			EnvironmentSpecularScale = 0.4,
+			EnvironmentSpecularScale = 0.5,
 			ExposureCompensation = 0.1,
 		},
 		Atmosphere = {
-			Density = 0.3,
-			Offset = 0.12,
-			Color = Color3.fromRGB(214, 156, 128),
-			Decay = Color3.fromRGB(110, 78, 96),
-			Glare = 0.5,
-			Haze = 1.8,
+			Density = 0.35,
+			Offset = 0.2,
+			Color = Color3.fromRGB(255, 200, 160),
+			Decay = Color3.fromRGB(200, 120, 110),
+			Glare = 0.4,
+			Haze = 1.5,
 		},
-		Bloom = { Intensity = 0.6, Size = 28, Threshold = 1.05 },
-		Color = { Brightness = 0.02, Contrast = 0.08, Saturation = 0.08, TintColor = Color3.fromRGB(255, 242, 230) },
-		Luciernagas = 10,
-		Niebla = 2,
+		Bloom = { Intensity = 0.7, Size = 32, Threshold = 1.1 },
+		Color = { Brightness = 0.02, Contrast = 0.1, Saturation = 0.1, TintColor = Color3.fromRGB(255, 245, 235) },
+		Rayos = { Intensity = 0.06, Spread = 0.6 },
+		Luciernagas = 20,
+		Niebla = 7,
 	},
 	Noche = {
 		Lighting = {
@@ -97,6 +102,7 @@ Config.Iluminacion = {
 		},
 		Bloom = { Intensity = 0.8, Size = 30, Threshold = 0.95 },
 		Color = { Brightness = 0, Contrast = 0.12, Saturation = -0.12, TintColor = Color3.fromRGB(214, 232, 240) },
+		Rayos = { Intensity = 0, Spread = 0.6 },
 		Luciernagas = 24,
 		Niebla = 6,
 	},

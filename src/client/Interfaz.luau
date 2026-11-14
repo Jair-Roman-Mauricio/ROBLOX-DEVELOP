@@ -143,7 +143,7 @@ function Interfaz.iniciar()
 		local cuenta = if portal then (portal:GetAttribute("Cuenta") or -1) :: number else -1
 		tituloVuelo.Text = ("Vuelo %d · %d/%d a bordo"):format(indice, n, Config.MAX_POR_EQUIPO)
 		detalleVuelo.Text = if cuenta >= 0
-			then ("Despega en %ds · baja de la plataforma para cancelar"):format(cuenta)
+			then ("Despega en %ds · aléjate del helicóptero para cancelar"):format(cuenta)
 			else "Esperando a que la selva esté lista"
 		panel.Visible = true
 	end

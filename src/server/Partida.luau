@@ -67,16 +67,28 @@ function Partida.preparar()
 		mundo.carpeta:Destroy()
 		mundo = nil
 	end
-	Terreno.limpiar()
-	local semilla = Random.new():NextInteger(1, 2 ^ 30)
+	-- si una generación falla se reintenta con otra semilla, para no dejar el lobby bloqueado
+	local ok, resultado = false, nil :: any
 	local inicio = os.clock()
-	local ok, resultado = pcall(Generador.generar, semilla, workspace, function(f: number, etapa: string)
-		estado:SetAttribute("Progreso", f)
-		estado:SetAttribute("Etapa", etapa)
-	end)
+	for intento = 1, 3 do
+		local resto = workspace:FindFirstChild("Selva")
+		if resto then
+			resto:Destroy()
+		end
+		Terreno.limpiar()
+		local semilla = Random.new():NextInteger(1, 2 ^ 30)
+		ok, resultado = pcall(Generador.generar, semilla, workspace, function(f: number, etapa: string)
+			estado:SetAttribute("Progreso", f)
+			estado:SetAttribute("Etapa", etapa)
+		end)
+		if ok then
+			break
+		end
+		warn(("[Selva] error generando el mapa (intento %d/3): %s"):format(intento, tostring(resultado)))
+		task.wait(1)
+	end
 	generando = false
 	if not ok then
-		warn("[Selva] error generando el mapa: " .. tostring(resultado))
 		fijarEstado("error")
 		return
 	end
@@ -91,7 +103,7 @@ local function terminar()
 	task.spawn(Partida.preparar)
 end
 
-function Partida.iniciar(grupo: { Player })
+function Partida.iniciar(grupo: { Player }, helipuerto: Model?)
 	local m = mundo
 	if estado:GetAttribute("Estado") ~= "lista" or not m then
 		for _, pl in grupo do
@@ -101,13 +113,28 @@ function Partida.iniciar(grupo: { Player })
 	end
 	fijarEstado("en_curso")
 	jugadores = table.clone(grupo)
+
+	-- embarque: cada jugador entra en la cabina y queda anclado mientras su cliente
+	-- reproduce la cinemática del despegue
+	local heli = helipuerto and helipuerto:FindFirstChild("Helicoptero")
+	local interior = heli and heli:FindFirstChild("Interior")
 	for _, pl in jugadores do
-		Remotes.Transicion:FireClient(pl, "El helicóptero pierde el control…")
+		local char = pl.Character
+		local raiz = char and char:FindFirstChild("HumanoidRootPart")
+		if char and raiz and raiz:IsA("BasePart") then
+			raiz.Anchored = true
+			if interior and interior:IsA("BasePart") then
+				char:PivotTo(interior.CFrame)
+			end
+		end
+		Remotes.Cinematica:FireClient(pl, helipuerto)
 	end
-	task.wait(1.4)
+	task.wait(Config.Lobby.CINEMATICA)
+
 	for i, pl in table.clone(jugadores) do
 		local char = pl.Character
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		local raiz = char and char:FindFirstChild("HumanoidRootPart")
 		if not pl.Parent or not char or not hum or hum.Health <= 0 then
 			quitar(pl)
 			continue
@@ -117,6 +144,9 @@ function Partida.iniciar(grupo: { Player })
 			pl:RequestStreamAroundAsync(spawn, 3)
 		end)
 		char:PivotTo(CFrame.lookAt(spawn, spawn + m.mirarInicio))
+		if raiz and raiz:IsA("BasePart") then
+			raiz.Anchored = false
+		end
 		pl:SetAttribute("Zona", "Partida")
 		pl.CameraMaxZoomDistance = P.ZOOM_MAXIMO
 		hum.Died:Once(function()
