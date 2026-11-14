@@ -454,20 +454,20 @@ function Cabina.construir(posicion: Vector3, padre: Instance): Cabina
 			m,
 			c(x, 4.6, -23.9),
 			Vector3.new(2.2, 1.4, 0.15),
-			if i % 2 == 0 then Color3.fromRGB(110, 230, 140) else Color3.fromRGB(255, 186, 80),
-			M.Neon,
+			if i % 2 == 0 then Color3.fromRGB(46, 92, 62) else Color3.fromRGB(104, 76, 38),
+			M.Glass,
 			SIN
 		)
-		pantalla.Transparency = 0.15
+		pantalla.Transparency = 0.05
+		pantalla.Reflectance = 0.15
 	end
 	for _, x in { -2.9, 2.9 } do
 		Kit.parte(m, c(x, 1.8, -19.8), Vector3.new(2.6, 0.5, 2.4), Color3.fromRGB(50, 40, 34), M.Leather)
 		Kit.parte(m, c(x, 3.9, -18.5), Vector3.new(2.6, 4.2, 0.5), Color3.fromRGB(50, 40, 34), M.Leather)
 		Kit.cilindro(m, c(x, 0, -21.6).Position, c(x, 2.6, -21.4).Position, 0.25, NEGRO, M.Metal)
 	end
-	local tablero =
-		Kit.parte(m, c(0, 4.3, -22.2), Vector3.new(0.6, 0.6, 0.6), Color3.fromRGB(120, 230, 150), M.Neon, SIN)
-	Kit.luz(tablero, Color3.fromRGB(150, 255, 190), 9, 0.8)
+	local tablero = Kit.parte(m, c(0, 4.3, -22.2), Vector3.new(0.6, 0.6, 0.6), Color3.fromRGB(46, 48, 48), M.Metal, SIN)
+	Kit.luz(tablero, Color3.fromRGB(150, 255, 190), 6, 0.25)
 	local pilotoModelo = piloto(c(-2.9, 3.55, -19.3), m)
 
 	-- carga, estantes y botín
@@ -505,12 +505,31 @@ function Cabina.construir(posicion: Vector3, padre: Instance): Cabina
 	local luzVerde =
 		Kit.parte(m, c(1.2, 9.6, 15.4), Vector3.new(0.9, 0.5, 0.5), Color3.fromRGB(30, 60, 34), M.SmoothPlastic, SIN)
 
+	local cartel = Kit.parte(m, c(0, 8.7, 15.7), Vector3.new(5, 1.3, 0.2), NEGRO, M.SmoothPlastic, SIN)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.LightInfluence = 0
+	gui.Brightness = 2
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 50
+	gui.Parent = cartel
+	local texto = Instance.new("TextLabel")
+	texto.Name = "Texto"
+	texto.BackgroundTransparency = 1
+	texto.Size = UDim2.fromScale(1, 1)
+	texto.Font = Enum.Font.GothamBlack
+	texto.TextScaled = true
+	texto.TextColor3 = Color3.fromRGB(70, 255, 110)
+	texto.Text = "▼  SALTO  ▼"
+	texto.Parent = gui
+
 	-- rampa trasera: gira sobre la bisagra del suelo; cerrada queda vertical
 	local bisagra = c(0, 0, 16.3)
 	local piezasRampa: { { parte: BasePart, off: CFrame } } = {}
-	local function pieza(off: CFrame, tam: Vector3, color: Color3, material: Enum.Material)
+	local function pieza(off: CFrame, tam: Vector3, color: Color3, material: Enum.Material): BasePart
 		local p = Kit.parte(m, bisagra, tam, color, material)
 		table.insert(piezasRampa, { parte = p, off = off })
+		return p
 	end
 	pieza(CFrame.new(0, 0, 5.4), Vector3.new(14.6, 0.6, 10.8), SUELO, M.DiamondPlate)
 	for k = -3, 3 do
@@ -521,6 +540,27 @@ function Cabina.construir(posicion: Vector3, padre: Instance): Cabina
 			M.SmoothPlastic
 		)
 	end
+	-- balizas de los bordes de la rampa: el cliente las enciende en cadena durante la cuenta
+	for k = 0, 4 do
+		for _, x in { -6.9, 6.9 } do
+			local guia = pieza(
+				CFrame.new(x, 0.36, 1.2 + k * 2.2),
+				Vector3.new(0.35, 0.12, 1.2),
+				Color3.fromRGB(20, 50, 26),
+				M.SmoothPlastic
+			)
+			guia.Name = "GuiaSalto"
+			guia.CastShadow = false
+			guia:SetAttribute("Orden", k)
+		end
+	end
+	local punta =
+		pieza(CFrame.new(0, 0.4, 10.6), Vector3.new(12, 0.1, 0.3), Color3.fromRGB(20, 50, 26), M.SmoothPlastic)
+	punta.Name = "GuiaSalto"
+	punta:SetAttribute("Orden", 5)
+	local luzPunta = Kit.luz(punta, Color3.fromRGB(90, 255, 120), 18, 0)
+	luzPunta.Name = "LuzSalto"
+
 	local function colocar(angulo: number)
 		local giro = bisagra * CFrame.Angles(angulo, 0, 0)
 		for _, pr in piezasRampa do

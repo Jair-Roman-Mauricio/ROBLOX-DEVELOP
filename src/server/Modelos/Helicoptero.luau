@@ -78,6 +78,28 @@ function Helicoptero.construir(rng: Random, cf: CFrame, padre: Instance, estrell
 	end
 	-- puerta corrediza de estribor (+X); la cinemática de embarque la desliza hacia la cola
 	if not estrellado then
+		-- hueco tras la puerta: fondo oscuro con los asientos (el casco es un elipsoide macizo)
+		local hueco = Kit.modelo("Hueco", m)
+		Kit.parte(hueco, c(3.72, 4.9, -0.1), Vector3.new(0.04, 4.4, 3.8), Color3.fromRGB(28, 26, 24), M.Fabric, SIN)
+		for _, z in { -1.1, 0.9 } do
+			Kit.parte(hueco, c(3.74, 4.1, z), Vector3.new(0.04, 0.5, 1.5), Color3.fromRGB(150, 44, 38), M.Fabric, SIN)
+			Kit.parte(
+				hueco,
+				c(3.74, 5.2, z + 0.55),
+				Vector3.new(0.04, 1.8, 0.4),
+				Color3.fromRGB(150, 44, 38),
+				M.Fabric,
+				SIN
+			)
+		end
+		Kit.parte(
+			hueco,
+			c(3.74, 2.75, -0.1),
+			Vector3.new(0.04, 0.3, 3.8),
+			Color3.fromRGB(80, 82, 80),
+			M.DiamondPlate,
+			SIN
+		)
 		local puerta = Kit.modelo("Puerta", m)
 		local hoja = Kit.parte(puerta, c(3.84, 4.9, -0.1), Vector3.new(0.2, 4.6, 4), BLANCO, LISO, {
 			nombre = "Hoja",

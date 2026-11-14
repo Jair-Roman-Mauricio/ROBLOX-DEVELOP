@@ -451,6 +451,52 @@ local function entrarCabina()
 			table.insert(alarmas, d)
 		end
 	end
+	local guias: { BasePart } = {}
+	for _, d in modelo:GetDescendants() do
+		if d:IsA("BasePart") and d.Name == "GuiaSalto" then
+			table.insert(guias, d)
+		end
+	end
+	-- luces de relámpago dentro de la bodega: entran por las ventanillas y por la rampa
+	local fogonazos: { PointLight } = {}
+	for _, pos in { c(-6, 6, -4), c(6, 6, 4), c(0, 7, 15), c(0, 6, -12) } do
+		local ancla = parteLocal(cielo.carpeta, Vector3.one, Color3.new(), Enum.Material.SmoothPlastic)
+		ancla.Transparency = 1
+		ancla.Position = pos
+		local l = Instance.new("PointLight")
+		l.Color = Color3.fromRGB(200, 218, 255)
+		l.Range = 26
+		l.Brightness = 0
+		l.Shadows = true
+		l.Parent = ancla
+		table.insert(fogonazos, l)
+	end
+	-- un relámpago: doble destello que deja ver toda la bodega y la salida
+	local function relampaguear(fuerza: number)
+		cielo.rayo()
+		Audio.efecto("Trueno", 0.4 + 0.5 * fuerza, 0.85 + math.random() * 0.3)
+		local function golpe(b: number)
+			for _, l in fogonazos do
+				l.Brightness = b
+			end
+			tinte.Brightness = 0.25 * fuerza
+			tween(tinte, 0.35, { Brightness = 0 }, Enum.EasingStyle.Quad)
+			destellar(ui, 0.18 * fuerza)
+		end
+		golpe(7 * fuerza)
+		task.delay(0.08, function()
+			for _, l in fogonazos do
+				l.Brightness = 0.5
+			end
+		end)
+		task.delay(0.17, function()
+			golpe(5 * fuerza)
+			for _, l in fogonazos do
+				tween(l, 0.6, { Brightness = 0 }, Enum.EasingStyle.Quad)
+			end
+		end)
+	end
+
 	local function lucesCabina(on: boolean, color: Color3?)
 		for _, p in luces do
 			p.Transparency = if on then 0 else 0.85
@@ -568,6 +614,14 @@ local function entrarCabina()
 			ui.cuenta.Visible = true
 			ui.botin.Visible = true
 			lucesCabina(true, Color3.fromRGB(255, 70, 50))
+			for _, p in luces do
+				local l = p:FindFirstChildOfClass("PointLight")
+				if l then
+					l.Brightness = 1.6
+					l.Range = 22
+				end
+			end
+			relampaguear(1)
 			for _, a in alarmas do
 				local l = a:FindFirstChildOfClass("SpotLight")
 				if l then
@@ -659,6 +713,10 @@ local function entrarCabina()
 				if cabeza then
 					anclaRelampago.Position = cabeza.Position + cabeza.CFrame.LookVector * 3 + ARRIBA * 1.5
 				end
+				for _, l in fogonazos do
+					l.Brightness = 4
+					tween(l, 0.7, { Brightness = 0 }, Enum.EasingStyle.Quad)
+				end
 				relampago.Brightness = 14
 				task.delay(0.12, function()
 					relampago.Brightness = 0
@@ -673,12 +731,21 @@ local function entrarCabina()
 				tween(tinte, 0.4, { TintColor = Color3.fromRGB(255, 196, 196) })
 			end
 		elseif fase == "cuenta" then
-			-- relámpagos sueltos durante la cuenta
+			-- relámpagos frecuentes: iluminan la bodega lo justo para ver la salida
 			if ahora > proximoRayo then
-				proximoRayo = ahora + math.random(40, 70) / 10
-				cielo.rayo()
-				Audio.efecto("Trueno", 0.6, 0.9 + math.random() * 0.2)
-				destellar(ui, 0.25)
+				proximoRayo = ahora + 1.6 + math.random() * 1.8
+				relampaguear(0.7 + math.random() * 0.3)
+			end
+			-- balizas de la rampa encendiéndose en cadena hacia el borde
+			for _, g in guias do
+				local orden = (g:GetAttribute("Orden") or 0) :: number
+				local on = (tf * 5 - orden) % 7 < 1.6
+				g.Material = if on then Enum.Material.Neon else Enum.Material.SmoothPlastic
+				g.Color = if on then Color3.fromRGB(90, 255, 120) else Color3.fromRGB(30, 80, 40)
+				local l = g:FindFirstChild("LuzSalto") :: PointLight?
+				if l then
+					l.Brightness = if on then 2.2 else 0.8
+				end
 			end
 			for i, a in alarmas do
 				a.CFrame *= CFrame.Angles(0, dt * 7 * (if i % 2 == 0 then 1 else -1), 0)
