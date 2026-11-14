@@ -1,0 +1,6 @@
+PUERTA_Z=(-5.6, -1.4)
+PUERTA_RECORRIDO=4.5
+RAMPA_BISAGRA=(0.0, 1.9092000000000005, 5.2)
+ROTOR_EJE=(0.0, 11.75, -0.6)
+COLA_EJE=(0.62, 10.9, 23.7)
+TRIS={'Casco': 5174, 'Vidrios': 760, 'Puerta': 844, 'VidrioPuerta': 76, 'Rampa': 484, 'Rotor': 1532, 'RotorCola': 224, 'Motores': 3056, 'Tren': 3240, 'Detalles': 5860, 'Interior': 9028}
