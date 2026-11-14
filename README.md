@@ -26,3 +26,12 @@ Formato y lint: `stylua src` y `selene src`.
 ## Agentes de IA
 
 Cualquier agente que trabaje en este repo debe seguir [`AGENTS.md`](AGENTS.md): leer [`CONTEXT.md`](CONTEXT.md), consultar el baúl de Obsidian *LihFolk Vault V1* y trabajar en ramas que salen de `dev` y vuelven a `dev` por PR.
+
+## Selva procedural y lobby
+
+Apagado por defecto (escribe terreno en tiempo de juego). Para jugarlo: **Workspace → Attributes → `SelvaProcedural` (booleano) = true**, y **Lighting → Technology = Future**. Luego **Play**.
+
+- `src/server/Lobby/`: base de expediciones con 4 helipuertos. Cada uno es un vuelo para hasta 4 jugadores; despega solo tras la cuenta atrás.
+- `src/server/Mundo/`: generación por semilla (`Disposicion` → `Terreno` → validación → `Zonas` + `Dispersion`). Cada partida genera una selva distinta con las zonas A–F de `CONTEXT.md`.
+- `src/server/Modelos/`: árboles, chozas, malocas, puentes, helicóptero, etc. construidos con partes.
+- `src/client/`: iluminación por zona, partículas, efectos animados e interfaz.
