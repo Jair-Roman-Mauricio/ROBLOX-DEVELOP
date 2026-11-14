@@ -76,6 +76,23 @@ function Helicoptero.construir(rng: Random, cf: CFrame, padre: Instance, estrell
 	for _, z in { -2.4, 2.2 } do
 		Kit.ovoide(m, c(0, 5.0, z), Vector3.new(7.7, 7.3, 0.35), GRIS, LISO, SIN)
 	end
+	-- puerta corrediza de estribor (+X); la cinemática de embarque la desliza hacia la cola
+	if not estrellado then
+		local puerta = Kit.modelo("Puerta", m)
+		local hoja = Kit.parte(puerta, c(3.84, 4.9, -0.1), Vector3.new(0.2, 4.6, 4), BLANCO, LISO, {
+			nombre = "Hoja",
+			colision = false,
+		})
+		puerta.PrimaryPart = hoja
+		Kit.parte(puerta, c(3.86, 6.0, -0.1), Vector3.new(0.22, 1.7, 2.8), VIDRIO, M.Glass, {
+			colision = false,
+			transparencia = 0.3,
+			reflejo = 0.25,
+		})
+		Kit.parte(puerta, c(3.86, 4.35, -0.1), Vector3.new(0.22, 0.32, 4), TURQUESA, LISO, SIN)
+		Kit.parte(puerta, c(3.97, 5.0, -1.4), Vector3.new(0.14, 0.22, 0.9), CROMO, M.Metal, SIN)
+		Kit.cilindro(m, p(3.9, 7.35, -2.3), p(3.9, 7.35, 4.4), 0.18, GRIS, M.Metal, SIN)
+	end
 	for _, s in { -1, 1 } do
 		Kit.parte(m, c(s * 3.78, 5.1, -0.4), Vector3.new(0.14, 0.22, 0.9), CROMO, M.Metal, SIN)
 		-- rejilla de admisión del motor

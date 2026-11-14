@@ -16,6 +16,15 @@ local Config = require(ReplicatedStorage.Shared.Config)
 
 local Ambiente = {}
 
+local aplicarPreset: ((string, number) -> ())? = nil
+
+-- Cambia a un preset de Config.Iluminacion (lo usan también la intro y las cinemáticas).
+function Ambiente.aplicar(nombre: string, segundos: number)
+	if aplicarPreset then
+		aplicarPreset(nombre, segundos)
+	end
+end
+
 local function asegurar(clase: string, nombre: string?): Instance
 	local existente = if nombre then Lighting:FindFirstChild(nombre) else Lighting:FindFirstChildOfClass(clase)
 	if existente then
@@ -138,10 +147,15 @@ function Ambiente.iniciar()
 		local zona = jugador:GetAttribute("Zona")
 		if zona == "Partida" then
 			aplicar("Noche", 0)
+		elseif zona == "Saltando" then
+			aplicar("Noche", 3)
+		elseif zona == "Helicoptero" then
+			aplicar("Vuelo", 0)
 		elseif zona == "Lobby" then
 			aplicar("Lobby", 0)
 		end
 	end
+	aplicarPreset = aplicar
 	jugador:GetAttributeChangedSignal("Zona"):Connect(actualizar)
 	aplicar("Lobby", 0)
 	actualizar()
