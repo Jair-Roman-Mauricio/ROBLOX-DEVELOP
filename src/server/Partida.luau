@@ -7,7 +7,8 @@
 	En producción cada vuelo debería ir a un servidor reservado (baúl: 41 Multiplayer Services/
 	Parties and Group Teleports, Reserved and Private Servers in Practice).
 
-	Sin monstruos, objetos, día/noche ni escape todavía. Al morir o reiniciar el personaje,
+	La entrada a la selva pasa por la intro del helicóptero (Intro.luau).
+	Sin monstruos, día/noche ni escape todavía. Al morir o reiniciar el personaje,
 	el jugador reaparece en el lobby (el único SpawnLocation activo).
 ]]
 
@@ -17,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(script.Parent.Remotes)
 local Generador = require(script.Parent.Mundo.Generador)
+local Intro = require(script.Parent.Intro)
 local Terreno = require(script.Parent.Mundo.Terreno)
 
 local P = Config.Partida
@@ -103,6 +105,12 @@ local function terminar()
 	task.spawn(Partida.preparar)
 end
 
+local function entrarSelva(pl: Player)
+	pl:SetAttribute("Zona", "Partida")
+	pl.CameraMaxZoomDistance = P.ZOOM_MAXIMO
+	Remotes.Aviso:FireClient(pl, "Explora la selva. Busca los pueblos, el helicóptero y la salida.", 6)
+end
+
 function Partida.iniciar(grupo: { Player }, helipuerto: Model?)
 	local m = mundo
 	if estado:GetAttribute("Estado") ~= "lista" or not m then
@@ -113,9 +121,22 @@ function Partida.iniciar(grupo: { Player }, helipuerto: Model?)
 	end
 	fijarEstado("en_curso")
 	jugadores = table.clone(grupo)
+	for _, pl in jugadores do
+		local hum = pl.Character and pl.Character:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum.Died:Once(function()
+				if table.find(jugadores, pl) then
+					quitar(pl)
+					for _, otro in jugadores do
+						Remotes.Aviso:FireClient(otro, ("%s ha caído."):format(pl.DisplayName), 4)
+					end
+				end
+			end)
+		end
+	end
 
-	-- embarque: cada jugador entra en la cabina y queda anclado mientras su cliente
-	-- reproduce la cinemática del despegue
+	-- despegue: cada jugador entra en la cabina del helicóptero del lobby, anclado, mientras
+	-- su cliente reproduce la cinemática del ascenso
 	local heli = helipuerto and helipuerto:FindFirstChild("Helicoptero")
 	local interior = heli and heli:FindFirstChild("Interior")
 	for _, pl in jugadores do
@@ -127,39 +148,24 @@ function Partida.iniciar(grupo: { Player }, helipuerto: Model?)
 				char:PivotTo(interior.CFrame)
 			end
 		end
-		Remotes.Cinematica:FireClient(pl, helipuerto)
+		-- el primero del grupo protagoniza el embarque
+		Remotes.Cinematica:FireClient(pl, helipuerto, jugadores[1])
 	end
 	task.wait(Config.Lobby.CINEMATICA)
 
-	for i, pl in table.clone(jugadores) do
-		local char = pl.Character
-		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		local raiz = char and char:FindFirstChild("HumanoidRootPart")
-		if not pl.Parent or not char or not hum or hum.Health <= 0 then
-			quitar(pl)
-			continue
+	-- dentro del helicóptero: piloto, posesión, 30 segundos y salto
+	local vivos = {}
+	for _, pl in jugadores do
+		if pl.Parent then
+			table.insert(vivos, pl)
 		end
-		local spawn = m.spawns[(i - 1) % #m.spawns + 1]
-		pcall(function()
-			pl:RequestStreamAroundAsync(spawn, 3)
-		end)
-		char:PivotTo(CFrame.lookAt(spawn, spawn + m.mirarInicio))
-		if raiz and raiz:IsA("BasePart") then
-			raiz.Anchored = false
-		end
-		pl:SetAttribute("Zona", "Partida")
-		pl.CameraMaxZoomDistance = P.ZOOM_MAXIMO
-		hum.Died:Once(function()
-			if table.find(jugadores, pl) then
-				quitar(pl)
-				for _, otro in jugadores do
-					Remotes.Aviso:FireClient(otro, ("%s ha caído."):format(pl.DisplayName), 4)
-				end
-			end
-		end)
-		Remotes.Aviso:FireClient(pl, "Explora la selva. Busca los pueblos, el helicóptero y la salida.", 6)
 	end
-	if #jugadores == 0 then
+	Intro.ejecutar(vivos, m.spawns, m.mirarInicio, function(pl: Player)
+		if table.find(jugadores, pl) then
+			entrarSelva(pl)
+		end
+	end)
+	if #jugadores == 0 and estado:GetAttribute("Estado") == "en_curso" then
 		terminar()
 	end
 end

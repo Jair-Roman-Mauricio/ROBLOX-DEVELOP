@@ -1,21 +1,24 @@
 {
   "name": "ROBLOX-DEVELOP",
-  "globIgnorePaths": ["**/*.spec.luau", "**/.DS_Store"],
+  "globIgnorePaths": [
+    "**/*.spec.luau",
+    "**/.DS_Store"
+  ],
   "tree": {
     "$className": "DataModel",
-
     "ReplicatedStorage": {
       "Shared": {
         "$path": "src/shared"
+      },
+      "Modelos": {
+        "$path": "assets"
       }
     },
-
     "ServerScriptService": {
       "Server": {
         "$path": "src/server"
       }
     },
-
     "StarterPlayer": {
       "StarterPlayerScripts": {
         "Client": {
@@ -23,7 +26,6 @@
         }
       }
     },
-
     "Workspace": {
       "$ignoreUnknownInstances": true
     }

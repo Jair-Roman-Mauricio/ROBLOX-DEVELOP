@@ -13,3 +13,6 @@ sourcemap.json
 sourcemap.json
 .DS_Store
 referencias/
+
+# renders y .blend de los scripts de Blender
+art/blender/out/
