@@ -10,6 +10,11 @@ local Config = {}
 
 Config.MAX_POR_EQUIPO = 4
 
+-- Helicóptero del lobby: `false` = hecho con partes (carga para cualquier cuenta);
+-- `true` = mallas importadas de ReplicatedStorage.Modelos.HelicopteroAMZ07, que solo cargan si
+-- la cuenta o la experiencia tiene permiso sobre esos assets.
+Config.HELICOPTERO_MALLAS = false
+
 Config.Lobby = {
 	CENTRO = Vector3.new(0, 60, 1700), -- lejos del mapa para que nunca se vean
 	VUELOS = 4,

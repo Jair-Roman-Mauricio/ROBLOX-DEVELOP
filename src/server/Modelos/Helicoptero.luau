@@ -12,7 +12,9 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local Kit = require(script.Parent.Kit)
+local Transporte = require(script.Parent.HelicopteroTransporte)
 
 local M = Enum.Material
 
@@ -172,12 +174,10 @@ local function desdeMallas(molde: Model, cf: CFrame, padre: Instance): Model?
 end
 
 function Helicoptero.construir(rng: Random, cf: CFrame, padre: Instance, estrellado: boolean): Model
-	local molde = if estrellado then nil else plantilla()
-	if molde then
-		local m = desdeMallas(molde, cf, padre)
-		if m then
-			return m
-		end
+	if not estrellado then
+		local molde = if Config.HELICOPTERO_MALLAS then plantilla() else nil
+		local mallas = if molde then desdeMallas(molde, cf, padre) else nil
+		return mallas or Transporte.construir(cf, padre)
 	end
 	local m = Kit.modelo(if estrellado then "HelicopteroEstrellado" else "Helicoptero", padre)
 	local sucio = Color3.fromRGB(46, 42, 36)
