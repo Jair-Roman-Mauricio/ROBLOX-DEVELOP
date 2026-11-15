@@ -26,6 +26,7 @@ local Culto = require(script.Parent.Parent.Modelos.Culto)
 local Detalles = require(script.Parent.Detalles)
 local Disposicion = require(script.Parent.Disposicion)
 local Dispersion = require(script.Parent.Dispersion)
+local Fauna = require(script.Parent.Parent.Fauna)
 local Terreno = require(script.Parent.Terreno)
 local Zonas = require(script.Parent.Zonas)
 local Estructuras = require(script.Parent.Parent.Modelos.Estructuras)
@@ -247,6 +248,8 @@ function Generador.generar(semilla: number, padre: Instance, progreso: (number, 
 
 	progreso(0.95, "Despertando la selva")
 	Detalles.decorar(rng, disp, datos, carpeta, carpetaVeg, claros)
+
+	Fauna.poblar(rng, zonas, carpeta)
 
 	-- los jugadores aparecen mirando hacia el primer pueblo
 	local a, b = disp.porId.A.pos, disp.porId.B.pos

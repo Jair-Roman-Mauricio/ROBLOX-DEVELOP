@@ -145,8 +145,23 @@ function Partida.iniciar(grupo: { Player }, helipuerto: Model?)
 			hum.Died:Once(function()
 				if table.find(jugadores, pl) then
 					quitar(pl)
+					-- CONTEXT.md: la pantalla de muerte identifica al responsable
+					local char = pl.Character
+					local por: any = char and char:GetAttribute("UltimoAtacante")
+					local en: any = char and char:GetAttribute("UltimoAtaqueEn")
+					local culpable = if typeof(por) == "string"
+							and typeof(en) == "number"
+							and workspace:GetServerTimeNow() - en < 10
+						then por
+						else nil
+					if culpable then
+						Remotes.Aviso:FireClient(pl, ("Eliminado por %s"):format(culpable), 5)
+					end
 					for _, otro in jugadores do
-						Remotes.Aviso:FireClient(otro, ("%s ha caído."):format(pl.DisplayName), 4)
+						local texto = if culpable
+							then ("%s fue eliminado por %s."):format(pl.DisplayName, culpable)
+							else ("%s ha caído."):format(pl.DisplayName)
+						Remotes.Aviso:FireClient(otro, texto, 4)
 					end
 				end
 			end)
