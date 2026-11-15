@@ -1,7 +1,8 @@
 --!strict
 --[[
 	Cola de los helipuertos del lobby. Quien se acerca a un helicóptero se une a su vuelo (máx. 4);
-	al entrar el primero empieza la cuenta atrás, que se acorta con el equipo completo.
+	al entrar el primero empieza la cuenta atrás, que se acorta con el equipo completo o se
+	salta si todo el vuelo pulsa "Despegar ya" (Saltos.luau).
 	Alejarse del helicóptero cancela la plaza. El servidor decide todo por posición: el cliente
 	solo muestra los atributos `Portal` del jugador y `Jugadores`/`Cuenta` del helipuerto.
 ]]
@@ -12,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(script.Parent.Parent.Remotes)
 local Lobby = require(script.Parent.Lobby)
+local Saltos = require(script.Parent.Parent.Saltos)
 
 local L = Config.Lobby
 local MAX = Config.MAX_POR_EQUIPO
@@ -78,6 +80,7 @@ function Portales.iniciar(
 )
 	local miembros: { { Player } } = {}
 	local fin: { [number]: number } = {}
+	local votos: { [number]: Saltos.Votacion } = {}
 	for i in portales do
 		miembros[i] = {}
 	end
@@ -115,13 +118,31 @@ function Portales.iniciar(
 
 			if #lista == 0 then
 				fin[i] = nil
+				local v = votos[i]
+				if v then
+					Saltos.cerrar(v)
+					votos[i] = nil
+				end
 			else
+				local v = votos[i]
+				if v then
+					Saltos.sincronizar(v, lista)
+				else
+					v = Saltos.abrir("despegue", lista)
+					votos[i] = v
+				end
 				local f = fin[i] or (ahora + L.CUENTA_ATRAS)
 				if #lista >= MAX then
 					f = math.min(f, ahora + L.CUENTA_EQUIPO_LLENO)
 				end
+				-- "Despegar ya": todo el vuelo votó saltar la cuenta atrás
+				if v.hecha then
+					f = math.min(f, ahora)
+				end
 				fin[i] = f
 				if ahora >= f and listo and not lanzado then
+					Saltos.cerrar(v)
+					votos[i] = nil
 					local grupo = table.clone(lista)
 					table.clear(lista)
 					fin[i] = nil
