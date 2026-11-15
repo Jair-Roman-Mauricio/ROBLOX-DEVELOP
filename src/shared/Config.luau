@@ -123,17 +123,20 @@ Config.Mapa = {
 	INTENTOS = 12,
 	ATAJOS = { 2, 3 }, -- caminos extra además de la ruta A-B-C-D-E-F
 	ESPEJO_ALEATORIO = true, -- refleja el mapa este-oeste en la mitad de las semillas
-	-- Unas 55.000 partes en total (antes ~35.000). Si va lento en móvil, bajar primero
+	-- Unas 70.000 partes en total (al principio ~35.000). Si va lento en móvil, bajar primero
 	-- MATORRAL, BORDE y DOSEL (baúl: Foliage Props and Scatter, "scatter density per device").
 	Vegetacion = {
-		DOSEL = 1400, -- manchas de copa que cierran el cielo
-		MATORRAL = 1600, -- masas de hojas bajas entre los troncos
-		PALMITOS = 500, -- palmas bajas del sotobosque
-		BORDE = 900, -- plantas que forman paredes verdes a los lados de los senderos
-		ARBOLES = 750,
+		DENSIDAD_MINIMA = 0.6, -- en los claros del ruido nunca baja de esto (antes 0.3)
+		FRANJA_SENDERO = 90, -- distancia a un sendero con densidad completa
+		LEJOS_SENDERO = 0.4, -- fracción de densidad más lejos de los senderos
+		DOSEL = 2000, -- manchas de copa que cierran el cielo
+		MATORRAL = 2400, -- masas de hojas bajas entre los troncos
+		PALMITOS = 800, -- palmas bajas del sotobosque
+		BORDE = 1400, -- plantas que forman paredes verdes a los lados de los senderos
+		ARBOLES = 1000,
 		HELECHOS = 1100,
-		ARBUSTOS = 450,
-		HOJAS_GRANDES = 280,
+		ARBUSTOS = 600,
+		HOJAS_GRANDES = 400,
 		ROCAS = 160,
 		TRONCOS = 45,
 	},

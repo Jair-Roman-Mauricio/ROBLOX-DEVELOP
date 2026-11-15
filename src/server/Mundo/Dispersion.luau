@@ -45,8 +45,14 @@ function Dispersion.poblar(
 		return true
 	end
 
+	-- Densidad: manchas de ruido (nunca menos de V.DENSIDAD_MINIMA) y mucho más cerca de los
+	-- senderos, que es por donde va el jugador (baúl: "spend density where the camera spends
+	-- time"). Lejos de ellos queda V.LEJOS_SENDERO de la densidad.
 	local function densidad(x: number, z: number): number
-		return 0.3 + 0.7 * Ruido.suave(-0.25, 0.25, Ruido.fbm(x * 0.005, z * 0.005, 2, ox, oz))
+		local manchas = V.DENSIDAD_MINIMA
+			+ (1 - V.DENSIDAD_MINIMA) * Ruido.suave(-0.25, 0.25, Ruido.fbm(x * 0.005, z * 0.005, 2, ox, oz))
+		local foco = if datos.distanciaCamino(x, z) < V.FRANJA_SENDERO then 1 else V.LEJOS_SENDERO
+		return manchas * foco
 	end
 
 	local colocados = 0
@@ -87,7 +93,7 @@ function Dispersion.poblar(
 		carpeta.Parent = padre
 		local hechos, intentos = 0, 0
 		local lim = MITAD - 20
-		while hechos < cantidad and intentos < cantidad * 10 do
+		while hechos < cantidad and intentos < cantidad * 16 do
 			intentos += 1
 			local x, z = rng:NextNumber(-lim, lim), rng:NextNumber(-lim, lim)
 			if libre(x, z, margenCamino, margenZona) and rng:NextNumber() < densidad(x, z) then
