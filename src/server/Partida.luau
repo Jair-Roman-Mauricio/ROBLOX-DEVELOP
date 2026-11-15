@@ -19,6 +19,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(script.Parent.Remotes)
 local Generador = require(script.Parent.Mundo.Generador)
 local Intro = require(script.Parent.Intro)
+local Saltos = require(script.Parent.Saltos)
 local Terreno = require(script.Parent.Mundo.Terreno)
 
 local P = Config.Partida
@@ -151,7 +152,10 @@ function Partida.iniciar(grupo: { Player }, helipuerto: Model?)
 		-- el primero del grupo protagoniza el embarque
 		Remotes.Cinematica:FireClient(pl, helipuerto, jugadores[1])
 	end
-	task.wait(Config.Lobby.CINEMATICA)
+	-- "Saltar cinemática": si todo el grupo vota, se pasa directo a la cabina
+	local votacion = Saltos.abrir("cinematica", jugadores)
+	Saltos.esperar(votacion, Config.Lobby.CINEMATICA)
+	Saltos.cerrar(votacion)
 
 	-- dentro del helicóptero: piloto, posesión, 30 segundos y salto
 	local vivos = {}

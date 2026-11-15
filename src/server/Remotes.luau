@@ -25,6 +25,7 @@ local Remotes = {
 	Transicion = evento("Transicion"), -- servidor → cliente: (texto) fundido a negro
 	Cinematica = evento("Cinematica"), -- servidor → cliente: (helipuerto: Model) despegue
 	Intro = evento("Intro"), -- servidor → cliente: ("salto", destino, mirar) | ("choque")
+	Saltar = evento("Saltar"), -- cliente → servidor: ("despegue" | "cinematica") vota saltar la espera
 	Estado = estado,
 }
 
