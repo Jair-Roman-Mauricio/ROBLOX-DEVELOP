@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Disposicion = require(script.Parent.Disposicion)
 local Dispersion = require(script.Parent.Dispersion)
+local Fauna = require(script.Parent.Parent.Fauna)
 local Terreno = require(script.Parent.Terreno)
 local Zonas = require(script.Parent.Zonas)
 local Estructuras = require(script.Parent.Parent.Modelos.Estructuras)
@@ -192,6 +193,8 @@ function Generador.generar(semilla: number, padre: Instance, progreso: (number, 
 	Dispersion.poblar(rng, disp, datos, carpetaVeg, function(f)
 		progreso(0.6 + f * 0.4, "Haciendo crecer la vegetación")
 	end)
+
+	Fauna.poblar(rng, zonas, carpeta)
 
 	-- los jugadores aparecen mirando hacia el primer pueblo
 	local a, b = disp.porId.A.pos, disp.porId.B.pos
