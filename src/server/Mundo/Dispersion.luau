@@ -50,7 +50,16 @@ function Dispersion.poblar(
 	end
 
 	local colocados = 0
-	local total = V.ARBOLES + V.HELECHOS + V.ARBUSTOS + V.HOJAS_GRANDES + V.ROCAS + V.TRONCOS
+	local total = V.ARBOLES
+		+ V.HELECHOS
+		+ V.ARBUSTOS
+		+ V.HOJAS_GRANDES
+		+ V.ROCAS
+		+ V.TRONCOS
+		+ V.DOSEL
+		+ V.MATORRAL
+		+ V.PALMITOS
+		+ V.BORDE
 
 	local function plantar(crear: Creador, x: number, z: number, carpeta: Instance): boolean
 		local p, mat = Kit.suelo(x, z)
@@ -143,6 +152,85 @@ function Dispersion.poblar(
 	repartir("HelechosSueltos", V.HELECHOS - bordes, 1, -14, function()
 		return Vegetacion.helecho
 	end)
+
+	-- estrato bajo entre los troncos
+	repartir("Matorral", V.MATORRAL, 2, -10, function()
+		return Vegetacion.matorral
+	end)
+	repartir("Palmitos", V.PALMITOS, 2.5, -8, function()
+		return Vegetacion.palmito
+	end)
+
+	local function enZona(x: number, z: number, margen: number): boolean
+		for _, zona in disp.zonas do
+			if (Vector2.new(x, z) - zona.pos).Magnitude < zona.radio + margen then
+				return true
+			end
+		end
+		return false
+	end
+
+	-- dosel: en el aire, también sobre los senderos (túnel verde), pero no sobre las zonas
+	-- (los pueblos quedan a cielo abierto) ni sobre el río
+	local dosel = Instance.new("Folder")
+	dosel.Name = "Dosel"
+	dosel.Parent = padre
+	local hechosDosel, intentosDosel = 0, 0
+	local limite = MITAD - 20
+	while hechosDosel < V.DOSEL and intentosDosel < V.DOSEL * 8 do
+		intentosDosel += 1
+		local x, z = rng:NextNumber(-limite, limite), rng:NextNumber(-limite, limite)
+		if
+			datos.distanciaRio(x, z) > C.ANCHO_RIO + 6
+			and not enZona(x, z, 10)
+			and rng:NextNumber() < densidad(x, z)
+		then
+			local p, mat = Kit.suelo(x, z)
+			if p and mat ~= Enum.Material.Water then
+				Vegetacion.dosel(rng, p + Vector3.new(0, rng:NextNumber(26, 40), 0), dosel)
+				hechosDosel += 1
+				colocados += 1
+				if colocados % 30 == 0 then
+					progreso(colocados / total)
+					task.wait()
+				end
+			end
+		end
+	end
+
+	-- paredes verdes a ambos lados de los senderos: donde más mira la cámara
+	-- (baúl: "spend density where the camera spends time")
+	local borde = Instance.new("Folder")
+	borde.Name = "BordeSenderos"
+	borde.Parent = padre
+	local hechosBorde, intentosBorde = 0, 0
+	while hechosBorde < V.BORDE and intentosBorde < V.BORDE * 6 do
+		intentosBorde += 1
+		local cam = Kit.elegir(rng, disp.caminos)
+		if #cam.puntos >= 3 then
+			local k = rng:NextInteger(2, #cam.puntos - 1)
+			local dir = cam.puntos[k + 1] - cam.puntos[k - 1]
+			if dir.Magnitude > 0 then
+				local lado = if rng:NextNumber() < 0.5 then -1 else 1
+				local perp = Vector2.new(-dir.Y, dir.X).Unit * lado
+				local pos = cam.puntos[k] + perp * rng:NextNumber(C.ANCHO_CAMINO + 3, C.ANCHO_CAMINO + 14)
+				if
+					datos.distanciaCamino(pos.X, pos.Y) > C.ANCHO_CAMINO + 2
+					and datos.distanciaRio(pos.X, pos.Y) > C.ANCHO_RIO + 2
+					and not enZona(pos.X, pos.Y, -4)
+				then
+					local r = rng:NextNumber()
+					local crear = if r < 0.45
+						then Vegetacion.matorral
+						elseif r < 0.75 then Vegetacion.hojaGrande
+						else Vegetacion.palmito
+					if plantar(crear, pos.X, pos.Y, borde) then
+						hechosBorde += 1
+					end
+				end
+			end
+		end
+	end
 
 	-- rocas de orilla
 	local orillas = Instance.new("Folder")

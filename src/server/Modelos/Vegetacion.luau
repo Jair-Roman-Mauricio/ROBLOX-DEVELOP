@@ -296,4 +296,69 @@ function Vegetacion.tronco(rng: Random, suelo: Vector3, padre: Instance): Model
 	return m
 end
 
+--[[
+	Capas extra para que se lea como selva (baúl: Foliage Props and Scatter): pocas partes muy
+	grandes que tapan mucho. El dosel cierra el cielo y da sombra al suelo; el matorral y los
+	palmitos llenan el estrato bajo entre los troncos.
+]]
+
+-- Dosel: manchas de copa aplanadas a media altura, entre los árboles. `punto` ya está en el aire.
+function Vegetacion.dosel(rng: Random, punto: Vector3, padre: Instance): Model
+	local m = Kit.modelo("Dosel", padre)
+	for k = 1, rng:NextInteger(1, 2) do
+		local ancho, largo = rng:NextNumber(22, 40), rng:NextNumber(22, 40)
+		local o = if k == 1
+			then Vector3.zero
+			else Vector3.new(rng:NextNumber(-10, 10), rng:NextNumber(-2, 3), rng:NextNumber(-10, 10))
+		Kit.ovoide(
+			m,
+			CFrame.new(punto + o) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0),
+			Vector3.new(ancho, rng:NextNumber(7, 11), largo),
+			Kit.variar(Kit.elegir(rng, HOJAS), rng, 0.06),
+			M.LeafyGrass,
+			Kit.COPA
+		)
+	end
+	if rng:NextNumber() < 0.6 then
+		lianas(m, rng, punto - Vector3.new(0, 3, 0), 12, rng:NextInteger(1, 4))
+	end
+	return m
+end
+
+-- Matorral: masas de hojas bajas y aplanadas que tapan la vista entre los troncos.
+function Vegetacion.matorral(rng: Random, suelo: Vector3, padre: Instance): Model
+	local m = Kit.modelo("Matorral", padre)
+	for _ = 1, rng:NextInteger(2, 3) do
+		local ancho = rng:NextNumber(6, 12)
+		local alto = rng:NextNumber(3, 6)
+		local o = Vector3.new(rng:NextNumber(-3, 3), alto * 0.3, rng:NextNumber(-3, 3))
+		Kit.ovoide(
+			m,
+			CFrame.new(suelo + o) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0),
+			Vector3.new(ancho, alto, ancho * rng:NextNumber(0.7, 1.2)),
+			Kit.variar(Kit.elegir(rng, HOJAS), rng, 0.06),
+			M.LeafyGrass,
+			Kit.FOLLAJE
+		)
+	end
+	return m
+end
+
+-- Palmito: palma baja del sotobosque, con el tronco fino y hojas arqueadas.
+function Vegetacion.palmito(rng: Random, suelo: Vector3, padre: Instance): Model
+	local m = Kit.modelo("Palmito", padre)
+	local alto = rng:NextNumber(4, 9)
+	local cima = suelo + Vector3.new(rng:NextNumber(-1, 1), alto, rng:NextNumber(-1, 1))
+	Kit.cilindro(m, suelo - Vector3.new(0, 0.5, 0), cima, rng:NextNumber(0.5, 0.8), Color3.fromRGB(96, 84, 62), M.Wood)
+	local n = rng:NextInteger(5, 7)
+	local color = Kit.variar(Kit.elegir(rng, HOJAS_PALMA), rng, 0.05)
+	for i = 1, n do
+		local a = i / n * math.pi * 2 + rng:NextNumber(-0.3, 0.3)
+		local dir = Vector3.new(math.cos(a), 0, math.sin(a))
+		local punta = cima + dir * rng:NextNumber(4, 6.5) - Vector3.new(0, rng:NextNumber(1.5, 3.5), 0)
+		Kit.viga(m, cima, punta, rng:NextNumber(1.6, 2.2), 0.15, color, M.Grass, Kit.FOLLAJE)
+	end
+	return m
+end
+
 return Vegetacion
