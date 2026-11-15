@@ -22,6 +22,7 @@ export type Votacion = {
 	miembros: { Player },
 	votos: { [Player]: boolean },
 	hecha: boolean,
+	abiertaEn: number,
 }
 
 local Saltos = {}
@@ -29,6 +30,9 @@ local Saltos = {}
 local dePlayer: { [Player]: Votacion } = {}
 local ultimo: { [Player]: number } = {}
 local INTERVALO = 0.3 -- segundos mínimos entre peticiones de un jugador
+-- Un voto que llega justo al abrirse una votación iba dirigido a la anterior (el cliente pide
+-- mantener pulsado 1 s, así que uno legítimo nunca llega antes de esto).
+local GRACIA_APERTURA = 0.9
 
 local function limpiarAtributos(pl: Player)
 	if pl.Parent then
@@ -66,7 +70,7 @@ local function pintar(v: Votacion)
 end
 
 function Saltos.abrir(tipo: string, miembros: { Player }): Votacion
-	local v: Votacion = { tipo = tipo, miembros = {}, votos = {}, hecha = false }
+	local v: Votacion = { tipo = tipo, miembros = {}, votos = {}, hecha = false, abiertaEn = os.clock() }
 	Saltos.sincronizar(v, miembros)
 	return v
 end
@@ -118,7 +122,7 @@ Remotes.Saltar.OnServerEvent:Connect(function(pl: Player, tipo: unknown)
 	end
 	ultimo[pl] = ahora
 	local v = dePlayer[pl]
-	if not v or v.tipo ~= tipo or v.votos[pl] then
+	if not v or v.tipo ~= tipo or v.votos[pl] or ahora - v.abiertaEn < GRACIA_APERTURA then
 		return
 	end
 	v.votos[pl] = true

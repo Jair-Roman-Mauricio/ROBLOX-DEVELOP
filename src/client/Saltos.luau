@@ -1,6 +1,7 @@
 --!strict
 --[[
-	Botón para saltar esperas, abajo a la derecha (dentro del área segura):
+	Botón para saltar esperas, abajo a la derecha (dentro del área segura). Hay que mantenerlo
+	pulsado un segundo:
 	  "Despegar ya"        en el helipuerto, durante la cuenta atrás.
 	  "Saltar cinemática"  en el despegue del lobby y en la charla del piloto.
 	En grupo muestra los votos (2/4) y espera a que voten todos. El servidor decide
@@ -9,15 +10,17 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local CREMA = Color3.fromRGB(244, 232, 206)
 local AMBAR = Color3.fromRGB(255, 176, 70)
 local FONDO = Color3.fromRGB(18, 20, 18)
 
 local TEXTOS = {
-	despegue = "Despegar ya",
-	cinematica = "Saltar cinemática",
+	despegue = "Mantén para despegar ya",
+	cinematica = "Mantén para saltar la cinemática",
 }
+local MANTENER = 1 -- segundos manteniendo pulsado para votar
 
 local Saltos = {}
 
@@ -87,12 +90,68 @@ function Saltos.iniciar()
 	end
 	actualizar()
 
-	boton.Activated:Connect(function()
+	-- Mantener pulsado MANTENER segundos para votar: evita saltos sin querer, por ejemplo con
+	-- un clic que iba al botón anterior. La barra se llena mientras lo mantienes.
+	local barra = Instance.new("Frame")
+	barra.Name = "Progreso"
+	barra.BackgroundColor3 = AMBAR
+	barra.BackgroundTransparency = 0.7
+	barra.BorderSizePixel = 0
+	barra.Position = UDim2.fromOffset(-18, 0) -- ocupa también el margen interior del botón
+	barra.Size = UDim2.fromScale(0, 1)
+	barra.ZIndex = 0
+	barra.Parent = boton
+	local esquinaBarra = Instance.new("UICorner")
+	esquinaBarra.CornerRadius = UDim.new(0, 10)
+	esquinaBarra.Parent = barra
+
+	local inicio: number? = nil
+	local tipoPulsado: string? = nil
+
+	local function soltar()
+		inicio = nil
+		tipoPulsado = nil
+		barra.Size = UDim2.fromScale(0, 1)
+	end
+
+	boton.InputBegan:Connect(function(entrada: InputObject)
+		local t = entrada.UserInputType
+		if t ~= Enum.UserInputType.MouseButton1 and t ~= Enum.UserInputType.Touch then
+			return
+		end
 		local tipo = jugador:GetAttribute("Salto")
 		if typeof(tipo) == "string" and tipo ~= "" and jugador:GetAttribute("SaltoVotado") ~= true then
-			remoto:FireServer(tipo)
+			inicio = os.clock()
+			tipoPulsado = tipo
 		end
 	end)
+	boton.InputEnded:Connect(function(entrada: InputObject)
+		local t = entrada.UserInputType
+		if t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.Touch then
+			soltar()
+		end
+	end)
+	boton.MouseLeave:Connect(soltar)
+
+	RunService.RenderStepped:Connect(function()
+		local desde = inicio
+		if not desde then
+			return
+		end
+		-- si cambió la votación mientras lo mantenías (otra pantalla), no cuenta
+		if jugador:GetAttribute("Salto") ~= tipoPulsado or not boton.Visible then
+			soltar()
+			return
+		end
+		local f = math.clamp((os.clock() - desde) / MANTENER, 0, 1)
+		barra.Size = UDim2.new(f, 36 * f, 1, 0)
+		if f >= 1 then
+			remoto:FireServer(tipoPulsado)
+			soltar()
+		end
+	end)
+
+	jugador:GetAttributeChangedSignal("Salto"):Connect(soltar)
 end
 
 return Saltos
