@@ -166,12 +166,15 @@ Config.Mapa = {
 }
 
 Config.Partida = {
-	-- Cámara de película en la selva: sobre el hombro, a distancia fija (el jugador no puede
-	-- alejarla ni acercarla) y con un campo de visión algo cerrado.
+	-- Cámara en la selva: primera persona fija, con los brazos visibles y un movimiento leve de
+	-- cámara en mano para dar tensión. Con "reducir movimiento" activado en Roblox no se balancea.
 	Camara = {
-		DISTANCIA = 9,
-		HOMBRO = Vector3.new(2.4, 0.9, 0), -- desplazamiento a la derecha y arriba del personaje
-		FOV = 60,
+		FOV = 64, -- algo cerrado: se ve menos a los lados
+		FOV_CORRIENDO = 4, -- grados que se abre al moverse
+		RESPIRACION = 0.35, -- grados de vaivén lento, siempre
+		PASO = 0.11, -- studs que sube y baja la vista al andar
+		PASO_GIRO = 0.45, -- grados de alabeo al andar
+		VINETA = 0.42, -- oscurecimiento de los bordes (0 = ninguno)
 	},
 }
 

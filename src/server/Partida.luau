@@ -21,7 +21,6 @@ local Generador = require(script.Parent.Mundo.Generador)
 local Intro = require(script.Parent.Intro)
 local Terreno = require(script.Parent.Mundo.Terreno)
 
-local P = Config.Partida
 local estado = Remotes.Estado
 
 local Partida = {}
@@ -41,6 +40,7 @@ local function quitar(pl: Player)
 	end
 	if pl.Parent then
 		pl:SetAttribute("Zona", "Lobby")
+		pl.CameraMode = Enum.CameraMode.Classic
 		pl.CameraMinZoomDistance = 0.5
 		pl.CameraMaxZoomDistance = 40
 	end
@@ -108,9 +108,8 @@ end
 
 local function entrarSelva(pl: Player)
 	pl:SetAttribute("Zona", "Partida")
-	-- distancia fija: mínimo y máximo iguales bloquean la rueda del ratón y el pellizco
-	pl.CameraMaxZoomDistance = P.Camara.DISTANCIA
-	pl.CameraMinZoomDistance = P.Camara.DISTANCIA
+	-- primera persona fija: el jugador no puede alejar la cámara
+	pl.CameraMode = Enum.CameraMode.LockFirstPerson
 	Remotes.Aviso:FireClient(pl, "Explora la selva. Busca los pueblos, el helicóptero y la salida.", 6)
 end
 

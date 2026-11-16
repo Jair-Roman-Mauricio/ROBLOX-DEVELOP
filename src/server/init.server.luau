@@ -33,6 +33,7 @@ end
 local function alEntrar(pl: Player)
 	pl:SetAttribute("Zona", "Lobby")
 	pl:SetAttribute("Portal", 0)
+	pl.CameraMode = Enum.CameraMode.Classic
 	pl.CameraMinZoomDistance = 0.5
 	pl.CameraMaxZoomDistance = 40
 end

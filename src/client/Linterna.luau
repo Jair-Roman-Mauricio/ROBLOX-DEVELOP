@@ -66,7 +66,7 @@ function Linterna.iniciar()
 		ocultarPropio(jugador.Character)
 	end
 
-	RunService:BindToRenderStep("Linterna", Enum.RenderPriority.Camera.Value + 1, function()
+	RunService:BindToRenderStep("Linterna", Enum.RenderPriority.Camera.Value + 2, function()
 		local on = encendida()
 		luz.Enabled = on
 		if not on then
