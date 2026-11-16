@@ -7,6 +7,7 @@ Se sincronizan a `ReplicatedStorage.Modelos`. Los scripts que generan los `.glb`
 |---|---|---|
 | `HelicopteroAMZ07` | `art/blender/build_helicoptero.py` | `Modelos/Helicoptero` si `Config.HELICOPTERO_MALLAS` |
 | `RocaSelva` | `art/blender/optimizar_roca.py` (peñasco de Sketchfab reducido) | `Modelos/Vegetacion` (rocas y peñascos) |
+| `ArbolSelva` | `art/blender/optimizar_arbol.py` (árbol de Meshy reducido) | `Modelos/Vegetacion` (ceibas) |
 
 ## Por qué a un compañero no le sale un modelo
 

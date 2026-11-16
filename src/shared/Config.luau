@@ -116,19 +116,25 @@ Config.Audio = {
 }
 
 Config.Mapa = {
-	TAMANO = 1536, -- studs por lado (~430 m). CONTEXT.md propone 1.000 m: pendiente de pruebas de rendimiento
+	TAMANO = 2304, -- studs por lado (~645 m; múltiplo de 256). CONTEXT.md propone 1.000 m: pendiente de pruebas de rendimiento
 	CELDA = 4, -- tamaño de vóxel del terreno
 	NIVEL_AGUA = 16, -- múltiplo de CELDA para que la superficie del agua quede plana
-	ALTURA_BASE = 44,
-	-- Altos y bajos de la selva, en studs. Subir GRANDE/LOMAS/FILOS da más desnivel; los senderos
-	-- siguen respetando PENDIENTE_CAMINO (cortan las lomas), así que la ruta sigue siendo caminable.
+	-- Relieve de selva baja amazónica, en studs (docs/TOPOGRAFIA-SELVA.md). Los senderos siguen
+	-- respetando PENDIENTE_CAMINO (cortan las lomas), así que la ruta sigue siendo caminable.
 	Relieve = {
-		GRANDE = 78, -- valles y mesetas anchos (~240 studs)
-		LOMAS = 30, -- lomas medianas (~80 studs)
-		FILOS = 24, -- filos estrechos en las partes quebradas
-		FINO = 2.6, -- irregularidad a ras de suelo
-		BLANDO = 7, -- suavizado del fondo de los valles
-		VALLE_RIO = 110, -- ancho de la ladera que baja hacia el río
+		VALLE_RIO = 170, -- ancho de la llanura inundable y de la subida a tierra firme
+		RESTINGA = 3, -- altura del dique natural junto a la orilla
+		GRANDE = 46, -- desnivel entre la llanura y la terraza más alta
+		TERRAZAS = 3, -- número de escalones
+		ESCALON = 0.75, -- 0 = rampa continua, 1 = terrazas planas con talud
+		TALUD = 0.18, -- medio ancho del talud entre terrazas (fracción del escalón)
+		COLINAS = 40, -- desnivel máximo entre el fondo de una quebrada y la cima
+		F_QUEBRADA = 0.0046, -- frecuencia de la red de quebradas (más alto = más juntas)
+		FONDO = 0.1, -- ancho del fondo plano de la quebrada
+		LADERA = 0.5, -- ancho de la ladera
+		FINO = 2.2, -- irregularidad a ras de suelo
+		COCHAS = 2, -- lagunas de meandro abandonado
+		COCHA_RADIO = 30,
 		TOPE_ZONA = 80, -- altura máxima de la meseta de una zona
 	},
 	ANCHO_CAMINO = 7, -- medio ancho del sendero
@@ -140,13 +146,14 @@ Config.Mapa = {
 	ATAJOS = { 2, 3 }, -- caminos extra además de la ruta A-B-C-D-E-F
 	ESPEJO_ALEATORIO = true, -- refleja el mapa este-oeste en la mitad de las semillas
 	Vegetacion = {
-		ARBOLES = 520,
-		HELECHOS = 1100,
-		ARBUSTOS = 450,
-		HOJAS_GRANDES = 280,
-		ROCAS = 160, -- total, contando los peñascos
-		ROCAS_GRANDES = 34, -- peñascos con árboles (modelo RocaSelva completo)
-		TRONCOS = 45,
+		CEIBAS = 0.1, -- fracción de los árboles que son ceibas gigantes (modelo ArbolSelva)
+		ARBOLES = 990,
+		HELECHOS = 2090,
+		ARBUSTOS = 860,
+		HOJAS_GRANDES = 530,
+		ROCAS = 300, -- total, contando los peñascos
+		ROCAS_GRANDES = 60, -- peñascos con árboles (modelo RocaSelva completo)
+		TRONCOS = 90,
 	},
 }
 

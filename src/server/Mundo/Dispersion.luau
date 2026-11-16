@@ -91,7 +91,7 @@ function Dispersion.poblar(
 
 	local function arbol(): Creador
 		local r = rng:NextNumber()
-		if r < 0.07 then
+		if r < V.CEIBAS then
 			return Vegetacion.ceiba
 		elseif r < 0.5 then
 			return Vegetacion.arbol

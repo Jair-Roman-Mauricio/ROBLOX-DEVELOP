@@ -91,21 +91,27 @@ local function limites(padre: Instance)
 	local carpeta = Instance.new("Folder")
 	carpeta.Name = "Limites"
 	carpeta.Parent = padre
+	-- cada lado va en tramos: una parte no puede medir más de 2048 studs
 	local m = C.TAMANO / 2
-	for _, d in
-		{
-			{ Vector3.new(m, 150, 0), Vector3.new(4, 600, C.TAMANO) },
-			{ Vector3.new(-m, 150, 0), Vector3.new(4, 600, C.TAMANO) },
-			{ Vector3.new(0, 150, m), Vector3.new(C.TAMANO, 600, 4) },
-			{ Vector3.new(0, 150, -m), Vector3.new(C.TAMANO, 600, 4) },
-		}
-	do
-		Kit.parte(carpeta, CFrame.new(d[1]), d[2], Color3.new(), Enum.Material.SmoothPlastic, {
-			transparencia = 1,
-			sombra = false,
-			consulta = false,
-			nombre = "Pared",
-		})
+	local tramos = math.ceil(C.TAMANO / 1024)
+	local largo = C.TAMANO / tramos
+	for k = 1, tramos do
+		local o = -m + (k - 0.5) * largo
+		for _, d in
+			{
+				{ Vector3.new(m, 150, o), Vector3.new(4, 600, largo) },
+				{ Vector3.new(-m, 150, o), Vector3.new(4, 600, largo) },
+				{ Vector3.new(o, 150, m), Vector3.new(largo, 600, 4) },
+				{ Vector3.new(o, 150, -m), Vector3.new(largo, 600, 4) },
+			}
+		do
+			Kit.parte(carpeta, CFrame.new(d[1]), d[2], Color3.new(), Enum.Material.SmoothPlastic, {
+				transparencia = 1,
+				sombra = false,
+				consulta = false,
+				nombre = "Pared",
+			})
+		end
 	end
 end
 
