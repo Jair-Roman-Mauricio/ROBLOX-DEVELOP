@@ -17,6 +17,7 @@ local Lobby = require(script.Lobby.Lobby)
 local Partida = require(script.Partida)
 local Portales = require(script.Lobby.Portales)
 require(script.Remotes)
+require(script.Linterna).iniciar()
 
 -- restos de la plantilla del place: solo en juego, no se guarda en el place
 local baseplate = workspace:FindFirstChild("Baseplate")
@@ -32,6 +33,7 @@ end
 local function alEntrar(pl: Player)
 	pl:SetAttribute("Zona", "Lobby")
 	pl:SetAttribute("Portal", 0)
+	pl.CameraMinZoomDistance = 0.5
 	pl.CameraMaxZoomDistance = 40
 end
 

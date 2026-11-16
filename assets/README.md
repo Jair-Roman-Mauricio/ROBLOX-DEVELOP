@@ -6,8 +6,10 @@ Se sincronizan a `ReplicatedStorage.Modelos`. Los scripts que generan los `.glb`
 | Modelo | Origen | Lo usa |
 |---|---|---|
 | `HelicopteroAMZ07` | `art/blender/build_helicoptero.py` | `Modelos/Helicoptero` si `Config.HELICOPTERO_MALLAS` |
-| `RocaSelva` | `art/blender/optimizar_roca.py` (peñasco de Sketchfab reducido) | `Modelos/Vegetacion` (rocas y peñascos) |
-| `ArbolSelva` | `art/blender/optimizar_arbol.py` (árbol de Meshy reducido) | `Modelos/Vegetacion` (ceibas) |
+
+Las rocas, los peñascos y las ceibas **ya no usan modelos importados**: son copias hechas con
+partes (`server/Modelos/Triangulos` + `server/Modelos/Datos/ModelosSelva`, generado por
+`art/blender/modelos_a_partes.py`). Cargan para cualquier cuenta sin permisos.
 
 ## Por qué a un compañero no le sale un modelo
 
@@ -31,16 +33,16 @@ Git no puede arreglar esto; se arregla en Roblox, de una de estas formas:
    cualquiera, en cualquier place. Es irreversible, y solo es válido si la licencia del modelo
    lo permite.
 
-## Qué hace el juego mientras tanto
+## Regla del proyecto
 
-`server/Modelos/Mallas` comprueba al arrancar si las mallas de cada modelo cargan para quien
-ejecuta el juego. Si cargan, se usa el modelo; si no, avisa en Output y construye la versión
-hecha con partes. Nadie ve objetos invisibles: quien no tiene permiso ve la versión de partes.
-`Config.USAR_MALLAS = false` fuerza las partes para todos.
+Lo que tenga que verse en el juego se construye con partes. Un modelo 3D externo se usa como
+referencia: `modelos_a_partes.py` saca de él triángulos de baja resolución con el color de la
+textura y el juego los monta con WedgeParts. El helicóptero importado solo se usa si
+`Config.HELICOPTERO_MALLAS` es `true`.
 
 ## Añadir un modelo
 
 1. Generar el `.glb` (menos de 20.000 triángulos por malla, texturas de 1024 como máximo).
 2. Importarlo en Studio con el importador 3D, con el grupo como *Creator* si existe.
 3. Guardarlo como `.rbxmx` en esta carpeta (clic derecho → *Save to File*).
-4. Usarlo desde el código con `Mallas.obtener("Nombre")` y dejar siempre una versión de partes.
+4. Dejar siempre una versión de partes: a quien no tenga permiso el modelo le sale invisible.

@@ -15,11 +15,6 @@ Config.MAX_POR_EQUIPO = 4
 -- la cuenta o la experiencia tiene permiso sobre esos assets.
 Config.HELICOPTERO_MALLAS = false
 
--- Modelos importados de ReplicatedStorage.Modelos (rocas). `true` = se usan si sus mallas cargan
--- con la cuenta o experiencia que ejecuta el juego, y si no, se construye la versión de partes.
--- `false` = siempre partes. Ver server/Modelos/Mallas y assets/README.md.
-Config.USAR_MALLAS = true
-
 Config.Lobby = {
 	CENTRO = Vector3.new(0, 60, 1700), -- lejos del mapa para que nunca se vean
 	VUELOS = 4,
@@ -154,7 +149,7 @@ Config.Mapa = {
 	ATAJOS = { 2, 3 }, -- caminos extra además de la ruta A-B-C-D-E-F
 	ESPEJO_ALEATORIO = true, -- refleja el mapa este-oeste en la mitad de las semillas
 	Vegetacion = {
-		CEIBAS = 0.1, -- fracción de los árboles que son ceibas gigantes (modelo ArbolSelva)
+		CEIBAS = 0.03, -- fracción de los árboles que son ceibas gigantes (~1.070 partes cada una)
 		-- alturas en studs (1 stud ≈ 0,28 m): dosel real de 30 a 45 m, emergentes de 50 a 60 m
 		ALTO_CEIBA = { 150, 210 },
 		ALTO_ARBOL = { 62, 118 },
@@ -164,14 +159,33 @@ Config.Mapa = {
 		HELECHOS = 2090,
 		ARBUSTOS = 860,
 		HOJAS_GRANDES = 530,
-		ROCAS = 300, -- total, contando los peñascos
-		ROCAS_GRANDES = 60, -- peñascos con árboles (modelo RocaSelva completo)
+		ROCAS = 180, -- total, contando los peñascos (~120 partes cada roca)
+		ROCAS_GRANDES = 30, -- peñascos con árboles (~540 partes cada uno)
 		TRONCOS = 90,
 	},
 }
 
 Config.Partida = {
-	ZOOM_MAXIMO = 18,
+	-- Cámara de película en la selva: sobre el hombro, a distancia fija (el jugador no puede
+	-- alejarla ni acercarla) y con un campo de visión algo cerrado.
+	Camara = {
+		DISTANCIA = 9,
+		HOMBRO = Vector3.new(2.4, 0.9, 0), -- desplazamiento a la derecha y arriba del personaje
+		FOV = 60,
+	},
+}
+
+-- Linterna. PROVISIONAL: el inventario y las herramientas son una decisión abierta (CONTEXT.md).
+-- Por ahora la tiene quien cogió "Linterna" del botín del helicóptero; no gasta batería.
+Config.Linterna = {
+	OBJETO = "Linterna",
+	TECLA = Enum.KeyCode.F,
+	BOTON_MANDO = Enum.KeyCode.ButtonY,
+	ALCANCE = 70, -- studs (máximo del motor: 120)
+	ANGULO = 52,
+	BRILLO = 2.6,
+	COLOR = Color3.fromRGB(255, 240, 214),
+	ESPERA = 0.25, -- segundos mínimos entre pulsaciones (lo valida el servidor)
 }
 
 -- Presets de iluminación que aplica cada cliente. Base: receta "Readable night" del baúl

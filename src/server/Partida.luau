@@ -41,6 +41,7 @@ local function quitar(pl: Player)
 	end
 	if pl.Parent then
 		pl:SetAttribute("Zona", "Lobby")
+		pl.CameraMinZoomDistance = 0.5
 		pl.CameraMaxZoomDistance = 40
 	end
 end
@@ -107,7 +108,9 @@ end
 
 local function entrarSelva(pl: Player)
 	pl:SetAttribute("Zona", "Partida")
-	pl.CameraMaxZoomDistance = P.ZOOM_MAXIMO
+	-- distancia fija: mínimo y máximo iguales bloquean la rueda del ratón y el pellizco
+	pl.CameraMaxZoomDistance = P.Camara.DISTANCIA
+	pl.CameraMinZoomDistance = P.Camara.DISTANCIA
 	Remotes.Aviso:FireClient(pl, "Explora la selva. Busca los pueblos, el helicóptero y la salida.", 6)
 end
 

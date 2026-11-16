@@ -2,15 +2,16 @@
 --[[
 	Vegetación de selva construida con partes. Cada función recibe el punto del suelo y
 	devuelve un Model. Las copas no colisionan ni reciben raycasts para no estorbar.
-	Las rocas y las ceibas usan los modelos importados RocaSelva y ArbolSelva cuando sus mallas
-	cargan (ver Mallas); si no, se construyen con partes.
+	Las rocas, los peñascos y las ceibas son copias hechas con partes de dos modelos 3D (ver
+	Datos/ModelosSelva y Triangulos): no usan mallas subidas a Roblox, así que cargan para todos.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Kit = require(script.Parent.Kit)
-local Mallas = require(script.Parent.Mallas)
+local Datos = require(script.Parent.Datos.ModelosSelva)
+local Triangulos = require(script.Parent.Triangulos)
 
 local V = Config.Mapa.Vegetacion
 
@@ -58,117 +59,91 @@ local function crecer(m: Model, suelo: Vector3, alto: number, rango: { number },
 	return m
 end
 
--- Medidas de un molde importado: pie de su malla principal respecto al pivote, lado mayor en
--- planta y alto. Se calculan una vez por modelo.
-type Medidas = { pie: CFrame, ancho: number, alto: number }
-local medidasDe: { [string]: Medidas } = {}
+-- Moldes de las copias con partes: se construyen una vez, sin padre, y luego se clonan. Cada
+-- molde tiene el pie en su pivote y mide `medida` studs (alto en la ceiba, ancho en las rocas).
+local moldes: { [string]: Model } = {}
 
-local function medir(molde: Model, parte: string): Medidas?
-	local previas = medidasDe[molde.Name]
-	if previas then
-		return previas
+local function clonar(nombre: string, hacer: (Model) -> ()): Model
+	local molde = moldes[nombre]
+	if molde then
+		return molde:Clone()
 	end
-	local malla = molde:FindFirstChild(parte, true)
-	if not malla or not malla:IsA("BasePart") then
-		warn(("[Selva] %s sin MeshPart '%s'; se usa la versión de partes"):format(molde.Name, parte))
-		return nil
-	end
-	-- caja alineada con el mundo, aunque el importador haya dejado la malla girada
-	local cf, t = malla.CFrame, malla.Size / 2
-	local r, u, f = cf.RightVector, cf.UpVector, cf.LookVector
-	local mitad = Vector3.new(
-		math.abs(r.X) * t.X + math.abs(u.X) * t.Y + math.abs(f.X) * t.Z,
-		math.abs(r.Y) * t.X + math.abs(u.Y) * t.Y + math.abs(f.Y) * t.Z,
-		math.abs(r.Z) * t.X + math.abs(u.Z) * t.Y + math.abs(f.Z) * t.Z
-	)
-	local medidas: Medidas = {
-		pie = molde:GetPivot():ToObjectSpace(CFrame.new(cf.Position - Vector3.new(0, mitad.Y, 0))),
-		ancho = math.max(mitad.X, mitad.Z) * 2,
-		alto = mitad.Y * 2,
-	}
-	medidasDe[molde.Name] = medidas
-	return medidas
+	local nuevo = Instance.new("Model")
+	nuevo.Name = nombre
+	hacer(nuevo)
+	nuevo.WorldPivot = CFrame.new()
+	moldes[nombre] = nuevo
+	return nuevo:Clone()
 end
 
--- Copia `molde` escalada por `k`, con el pie de su malla principal en `suelo - hundir`.
-local function colocar(molde: Model, medidas: Medidas, rng: Random, suelo: Vector3, k: number, hundir: number): Model
-	local m = molde:Clone()
+-- Coloca una copia del molde escalada por `k`, girada al azar, con el pie en `pie`.
+local function plantar(m: Model, rng: Random, pie: Vector3, k: number, padre: Instance): Model
 	m:ScaleTo(k)
-	local destino = CFrame.new(suelo - Vector3.new(0, hundir, 0)) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
-	m:PivotTo(destino * (medidas.pie.Rotation + medidas.pie.Position * k):Inverse())
-	return m
-end
-
--- Árbol gigante importado (ArbolSelva, generado con Meshy y reducido). Devuelve nil si el modelo
--- no existe o sus mallas no cargan.
-local function arbolMalla(rng: Random, suelo: Vector3, padre: Instance, alto: number): Model?
-	local molde = Mallas.obtener("ArbolSelva")
-	local medidas = if molde then medir(molde, "Arbol") else nil
-	if not molde or not medidas then
-		return nil
-	end
-	local k = alto / medidas.alto
-	-- las raíces se hunden un poco para que no asomen por debajo en las laderas
-	local m = colocar(molde, medidas, rng, suelo, k, alto * 0.035)
-	m.Name = "Ceiba"
-	for _, d in m:GetDescendants() do
-		if d:IsA("BasePart") then
-			d.Anchored = true
-			d.CanTouch = false
-			d.CanQuery = false
-		end
-	end
+	m:PivotTo(CFrame.new(pie) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0))
 	m.Parent = padre
 	return m
 end
 
-function Vegetacion.ceiba(rng: Random, suelo: Vector3, padre: Instance): Model
-	local alto = rng:NextNumber(50, 72)
-	local importado = arbolMalla(rng, suelo, padre, rng:NextNumber(V.ALTO_CEIBA[1], V.ALTO_CEIBA[2]))
-	if importado then
-		return importado
-	end
-	local m = Kit.modelo("Ceiba", padre)
-	local d = rng:NextNumber(5.5, 8)
-	local corteza = Kit.variar(Kit.elegir(rng, CORTEZA), rng, 0.04)
-	local cima = suelo + Vector3.new(rng:NextNumber(-2, 2), alto, rng:NextNumber(-2, 2))
-	Kit.cilindro(m, suelo - Vector3.new(0, 3, 0), cima, d, corteza, M.Wood)
-	Kit.cilindro(m, suelo - Vector3.new(0, 3, 0), suelo:Lerp(cima, 0.25), d * 1.35, corteza, M.Wood)
+local ALTO_MOLDE_CEIBA = 100
 
-	local base = CFrame.new(suelo)
-	for i = 1, 6 do
-		local a = i / 6 * math.pi * 2 + rng:NextNumber(-0.25, 0.25)
-		local largo, altoR = rng:NextNumber(7, 12), rng:NextNumber(8, 14)
-		local cf = base * CFrame.Angles(0, a, 0) * CFrame.new(0, altoR / 2 - 1, -(d / 2 + largo / 2 - 1.5))
-		Kit.parte(m, cf, Vector3.new(1.3, altoR, largo), corteza, M.Wood, { cuna = true })
-	end
+-- Ceiba copiada del árbol 3D: una piel de triángulos con la silueta real (raíces tablares,
+-- tronco, ramas y masas de la copa) y el color del original en cada cara, bolas de relleno
+-- dentro de la copa para que no se vea hueca, y lianas colgando.
+local function moldeCeiba(m: Model)
+	local k = ALTO_MOLDE_CEIBA
+	local rng = Random.new(11)
+	Triangulos.construir(
+		m,
+		Datos.Ceiba,
+		function(p)
+			return p * k
+		end,
+		2.2,
+		function(color, _normal)
+			-- verde = hojas o musgo; pardo = corteza
+			if color.G > color.R * 1.05 and color.G > color.B * 1.2 then
+				return color, if color.G > 0.42 then M.LeafyGrass else M.Grass
+			end
+			return color, M.Wood
+		end,
+		{ consulta = false }
+	)
 
-	for _ = 1, rng:NextInteger(6, 8) do
-		local a = rng:NextNumber(0, math.pi * 2)
-		local r = rng:NextNumber(8, 18)
-		local y = rng:NextNumber(-8, 3)
-		local punta = cima + Vector3.new(math.cos(a) * r, y, math.sin(a) * r)
-		Kit.cilindro(m, suelo:Lerp(cima, 0.82), punta, d * 0.32, corteza, M.Wood)
-		local dh = rng:NextNumber(15, 24)
+	local h = Datos.Ceiba.hojas
+	local masas: { { p: Vector3, r: number } } = {}
+	for i = 1, #h, 7 do
+		local p, r = Vector3.new(h[i], h[i + 1], h[i + 2]) * k, h[i + 3] * k
+		table.insert(masas, { p = p, r = r })
 		Kit.parte(
 			m,
-			CFrame.new(punta + Vector3.new(0, dh * 0.2, 0)),
-			Vector3.one * dh,
-			Kit.variar(Kit.elegir(rng, HOJAS), rng, 0.04),
-			if rng:NextNumber() < 0.5 then M.Grass else M.LeafyGrass,
+			CFrame.new(p),
+			Vector3.one * r * 2,
+			Color3.fromRGB(h[i + 4], h[i + 5], h[i + 6]),
+			M.LeafyGrass,
 			{ forma = BOLA, colision = false, consulta = false }
 		)
 	end
-	Kit.parte(
-		m,
-		CFrame.new(cima + Vector3.new(0, 6, 0)),
-		Vector3.one * rng:NextNumber(20, 26),
-		Kit.elegir(rng, HOJAS),
-		M.Grass,
-		{ forma = BOLA, colision = false, consulta = false }
+	for _ = 1, 14 do
+		local masa = masas[rng:NextInteger(1, #masas)]
+		local a, r = rng:NextNumber(0, math.pi * 2), masa.r * rng:NextNumber(0.5, 1.1)
+		local arriba = masa.p + Vector3.new(math.cos(a) * r, -masa.r * 0.4, math.sin(a) * r)
+		local largo = math.min(arriba.Y - k * 0.1, k * rng:NextNumber(0.1, 0.3))
+		if largo > 4 then
+			Kit.cilindro(m, arriba, arriba - Vector3.new(0, largo, 0), 0.45, LIANA, M.Grass, Kit.FOLLAJE)
+		end
+	end
+end
+
+function Vegetacion.ceiba(rng: Random, suelo: Vector3, padre: Instance): Model
+	local alto = rng:NextNumber(V.ALTO_CEIBA[1], V.ALTO_CEIBA[2])
+	-- las raíces se hunden un poco para que no asomen por debajo en las laderas
+	return plantar(
+		clonar("Ceiba", moldeCeiba),
+		rng,
+		suelo - Vector3.new(0, alto * 0.03, 0),
+		alto / ALTO_MOLDE_CEIBA,
+		padre
 	)
-	lianas(m, rng, cima - Vector3.new(0, 4, 0), 16, rng:NextInteger(6, 10))
-	return crecer(m, suelo, alto, V.ALTO_CEIBA, rng)
 end
 
 function Vegetacion.arbol(rng: Random, suelo: Vector3, padre: Instance): Model
@@ -336,67 +311,87 @@ function Vegetacion.hojaGrande(rng: Random, suelo: Vector3, padre: Instance): Mo
 	return m
 end
 
--- Roca de partes: la que se usa cuando el modelo RocaSelva no existe o no carga.
-local function rocaPartes(rng: Random, suelo: Vector3, padre: Instance, escala: number): Model
-	local m = Kit.modelo("Roca", padre)
-	local color = Kit.variar(Color3.fromRGB(96, 100, 92), rng, 0.06)
-	for _ = 1, rng:NextInteger(1, 3) do
-		local tam = Vector3.new(rng:NextNumber(3, 9), rng:NextNumber(2, 6), rng:NextNumber(3, 9)) * escala
-		local o = Vector3.new(rng:NextNumber(-3, 3) * escala, tam.Y * 0.2, rng:NextNumber(-3, 3) * escala)
-		local cf = CFrame.new(suelo + o)
-			* CFrame.Angles(rng:NextNumber(-0.4, 0.4), rng:NextNumber(0, math.pi * 2), rng:NextNumber(-0.4, 0.4))
-		Kit.parte(m, cf, tam, color, if rng:NextNumber() < 0.5 then M.Rock else M.Slate)
-		if rng:NextNumber() < 0.5 then
+local MUSGO_ROCA = Color3.fromRGB(62, 84, 48)
+
+-- Color de la textura original; las caras que miran al cielo crían musgo.
+local function pintarRoca(color: Color3, normal: Vector3): (Color3, Enum.Material)
+	if normal.Y > 0.82 then
+		return color:Lerp(MUSGO_ROCA, 0.7), M.LeafyGrass
+	elseif normal.Y > 0.55 then
+		return color:Lerp(MUSGO_ROCA, 0.3), M.Rock
+	end
+	return color, if normal.Y < -0.3 then M.Slate else M.Rock
+end
+
+local ANCHO_MOLDE_ROCA = 12
+
+-- Roca suelta: la silueta del peñasco con pocos triángulos. Tres variantes estiradas distinto.
+local function moldeRoca(variante: number): (Model) -> ()
+	return function(m: Model)
+		local rng = Random.new(100 + variante)
+		local k = ANCHO_MOLDE_ROCA
+		local estirar = Vector3.new(rng:NextNumber(0.8, 1.15), rng:NextNumber(0.75, 1.3), rng:NextNumber(0.8, 1.15)) * k
+		Triangulos.construir(m, Datos.Roca, function(p)
+			return p * estirar
+		end, 1.4, pintarRoca)
+	end
+end
+
+-- Peñasco copiado del modelo 3D: la piedra con sus picos (triángulos con el color de la textura),
+-- los troncos y raíces que la recorren y una mata por cada masa de hojas del original.
+local function moldePenasco(m: Model)
+	local rng = Random.new(23)
+	Triangulos.construir(m, Datos.Penasco, function(p)
+		return p
+	end, 1.5, pintarRoca)
+	local t = Datos.Penasco.troncos
+	for i = 1, #t, 7 do
+		Kit.cilindro(
+			m,
+			Vector3.new(t[i], t[i + 1], t[i + 2]),
+			Vector3.new(t[i + 3], t[i + 4], t[i + 5]),
+			t[i + 6] * 2,
+			Kit.variar(Kit.elegir(rng, CORTEZA), rng, 0.05),
+			M.Wood,
+			Kit.FOLLAJE
+		)
+	end
+	local h = Datos.Penasco.hojas
+	for i = 1, #h, 4 do
+		local centro, r = Vector3.new(h[i], h[i + 1], h[i + 2]), h[i + 3]
+		-- cada masa de hojas: una bola grande y dos menores alrededor para romper la esfera
+		for j = 1, 3 do
+			local rj = if j == 1 then r else r * rng:NextNumber(0.5, 0.7)
+			local o = if j == 1
+				then Vector3.zero
+				else Vector3.new(rng:NextNumber(-1, 1), rng:NextNumber(-0.4, 0.8), rng:NextNumber(-1, 1)) * r * 0.8
 			Kit.parte(
 				m,
-				cf * CFrame.new(0, tam.Y / 2, 0),
-				Vector3.new(tam.X * 0.8, 0.4, tam.Z * 0.8),
-				MUSGO,
-				M.LeafyGrass,
-				Kit.FOLLAJE
+				CFrame.new(centro + o),
+				Vector3.one * rj * 2,
+				Kit.variar(Kit.elegir(rng, HOJAS), rng, 0.06),
+				if rng:NextNumber() < 0.5 then M.Grass else M.LeafyGrass,
+				{ forma = BOLA, colision = false, consulta = false, sombra = false }
 			)
 		end
 	end
-	return m
-end
-
--- Copia del modelo RocaSelva con `ancho` studs de lado mayor. `vegetacion` conserva los
--- árboles y raíces que crecen sobre la piedra; sin ella queda solo la piedra (más barata).
-local function rocaMalla(rng: Random, suelo: Vector3, padre: Instance, ancho: number, vegetacion: boolean): Model?
-	local molde = Mallas.obtener("RocaSelva")
-	local medidas = if molde then medir(molde, "Roca") else nil
-	if not molde or not medidas then
-		return nil
-	end
-	local k = ancho / medidas.ancho
-	-- hundida en el suelo: tapa la base y evita que un lado quede en el aire en las laderas
-	local m = colocar(molde, medidas, rng, suelo, k, medidas.alto * k * (if vegetacion then 0.2 else 0.16))
-	m.Name = "Roca"
-	for _, d in m:GetDescendants() do
-		if d:IsA("BasePart") then
-			local piedra = d.Name == "Roca"
-			if not piedra and not vegetacion then
-				d:Destroy()
-				continue
-			end
-			d.Anchored = true
-			d.CanTouch = false
-			d.CanCollide = piedra
-			d.CanQuery = piedra
-			d.CastShadow = d.Name ~= "Hojas"
-		end
-	end
-	m.Parent = padre
-	return m
 end
 
 function Vegetacion.roca(rng: Random, suelo: Vector3, padre: Instance): Model
-	return rocaMalla(rng, suelo, padre, rng:NextNumber(7, 15), false) or rocaPartes(rng, suelo, padre, 1)
+	local variante = rng:NextInteger(1, 3)
+	local ancho = rng:NextNumber(7, 16)
+	local m = clonar("Roca" .. variante, moldeRoca(variante))
+	m.Name = "Roca"
+	-- hundida en el suelo: tapa la base y evita que un lado quede en el aire en las laderas
+	local hundir = ancho * Datos.Roca.alto * 0.16
+	return plantar(m, rng, suelo - Vector3.new(0, hundir, 0), ancho / ANCHO_MOLDE_ROCA, padre)
 end
 
 -- Peñasco con árboles encima: hito del paisaje. Necesita unos 20 studs libres alrededor.
 function Vegetacion.rocaGrande(rng: Random, suelo: Vector3, padre: Instance): Model
-	return rocaMalla(rng, suelo, padre, rng:NextNumber(22, 36), true) or rocaPartes(rng, suelo, padre, 2.2)
+	local k = rng:NextNumber(24, 40) / Datos.Penasco.ancho
+	local m = clonar("Penasco", moldePenasco)
+	return plantar(m, rng, suelo - Vector3.new(0, Datos.Penasco.alto * k * 0.2, 0), k, padre)
 end
 
 function Vegetacion.tronco(rng: Random, suelo: Vector3, padre: Instance): Model
