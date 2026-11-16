@@ -102,7 +102,11 @@ function Dispersion.poblar(
 	end
 
 	repartir("Arboles", V.ARBOLES, 7, -4, arbol)
-	repartir("Rocas", V.ROCAS, 3, 0, function()
+	-- los peñascos van primero y lejos de senderos y zonas: miden hasta 36 studs
+	repartir("RocasGrandes", V.ROCAS_GRANDES, 24, 18, function()
+		return Vegetacion.rocaGrande
+	end)
+	repartir("Rocas", V.ROCAS - V.ROCAS_GRANDES, 6, 2, function()
 		return Vegetacion.roca
 	end)
 	repartir("Troncos", V.TRONCOS, 4, 0, function()

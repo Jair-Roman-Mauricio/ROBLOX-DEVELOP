@@ -15,6 +15,11 @@ Config.MAX_POR_EQUIPO = 4
 -- la cuenta o la experiencia tiene permiso sobre esos assets.
 Config.HELICOPTERO_MALLAS = false
 
+-- Modelos importados de ReplicatedStorage.Modelos (rocas). `true` = se usan si sus mallas cargan
+-- con la cuenta o experiencia que ejecuta el juego, y si no, se construye la versión de partes.
+-- `false` = siempre partes. Ver server/Modelos/Mallas y assets/README.md.
+Config.USAR_MALLAS = true
+
 Config.Lobby = {
 	CENTRO = Vector3.new(0, 60, 1700), -- lejos del mapa para que nunca se vean
 	VUELOS = 4,
@@ -114,7 +119,18 @@ Config.Mapa = {
 	TAMANO = 1536, -- studs por lado (~430 m). CONTEXT.md propone 1.000 m: pendiente de pruebas de rendimiento
 	CELDA = 4, -- tamaño de vóxel del terreno
 	NIVEL_AGUA = 16, -- múltiplo de CELDA para que la superficie del agua quede plana
-	ALTURA_BASE = 30,
+	ALTURA_BASE = 44,
+	-- Altos y bajos de la selva, en studs. Subir GRANDE/LOMAS/FILOS da más desnivel; los senderos
+	-- siguen respetando PENDIENTE_CAMINO (cortan las lomas), así que la ruta sigue siendo caminable.
+	Relieve = {
+		GRANDE = 78, -- valles y mesetas anchos (~240 studs)
+		LOMAS = 30, -- lomas medianas (~80 studs)
+		FILOS = 24, -- filos estrechos en las partes quebradas
+		FINO = 2.6, -- irregularidad a ras de suelo
+		BLANDO = 7, -- suavizado del fondo de los valles
+		VALLE_RIO = 110, -- ancho de la ladera que baja hacia el río
+		TOPE_ZONA = 80, -- altura máxima de la meseta de una zona
+	},
 	ANCHO_CAMINO = 7, -- medio ancho del sendero
 	ANCHO_RIO = 16, -- medio ancho del cauce
 	ORILLA = 14,
@@ -128,7 +144,8 @@ Config.Mapa = {
 		HELECHOS = 1100,
 		ARBUSTOS = 450,
 		HOJAS_GRANDES = 280,
-		ROCAS = 160,
+		ROCAS = 160, -- total, contando los peñascos
+		ROCAS_GRANDES = 34, -- peñascos con árboles (modelo RocaSelva completo)
 		TRONCOS = 45,
 	},
 }

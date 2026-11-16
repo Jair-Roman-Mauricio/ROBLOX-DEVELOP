@@ -6,7 +6,7 @@
 	06 World Building and Art/Terrain Tools and Terrain API).
 
 	Capas, en orden:
-	  1. colinas (fbm con distorsión) + borde montañoso + crestas de la salida
+	  1. relieve en tres escalas (Config.Mapa.Relieve) + valle del río + borde montañoso + crestas de la salida
 	  2. mesetas de las zonas
 	  3. senderos con altura suavizada y pendiente limitada
 	  4. cauce y orillas del río
@@ -27,6 +27,7 @@ local AGUA = C.NIVEL_AGUA
 local ANCHO = C.ANCHO_CAMINO
 local RIO = C.ANCHO_RIO
 local ORILLA = C.ORILLA
+local R = C.Relieve
 local BLOQUE = 64 -- celdas por lado en cada escritura
 
 local M = Enum.Material
@@ -87,11 +88,30 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 	local ox, oz = rng:NextNumber(-2000, 2000), rng:NextNumber(-2000, 2000)
 	local crestas = disp.crestas
 
+	local total = N * N
+	local distRio = table.create(total, math.huge)
+	estampar(distRio, nil, disp.rio, nil, RIO + ORILLA + R.VALLE_RIO)
+
 	local function base(x: number, z: number): number
 		-- distorsión de dominio: colinas menos redondas (baúl: Domain warping)
 		local wx = x + Ruido.fbm(x * 0.003 + 11.3, z * 0.003, 2, ox, oz) * 90
 		local wz = z + Ruido.fbm(x * 0.003, z * 0.003 + 7.7, 2, oz, ox) * 90
-		local h = math.max(C.ALTURA_BASE + Ruido.fbm(wx * 0.0042, wz * 0.0042, 5, ox, oz) * 55, AGUA + 3)
+		-- tres escalas: valles y mesetas anchos, lomas medianas y filos estrechos. La máscara
+		-- deja unas partes de la selva onduladas y otras quebradas, para que no se repita.
+		local quebrado = Ruido.suave(-0.3, 0.25, Ruido.fbm(x * 0.0021 + 31.7, z * 0.0021 + 5.1, 2, oz, ox))
+		local h = C.ALTURA_BASE + Ruido.fbm(wx * 0.0042, wz * 0.0042, 5, ox, oz) * R.GRANDE
+		h += Ruido.fbm(wx * 0.0125 + 3.9, wz * 0.0125 + 8.2, 4, oz, ox) * R.LOMAS * (0.4 + 0.6 * quebrado)
+		local pliegue = 1 - math.min(1, math.abs(Ruido.fbm(wx * 0.0068 + 53.1, wz * 0.0068 + 17.9, 3, ox, oz)) * 3.2)
+		h += pliegue * pliegue * R.FILOS * quebrado
+		-- suelo blando: los fondos de valle se aplanan poco a poco en vez de cortarse a ras
+		local piso = AGUA + 3
+		h = piso + R.BLANDO * math.log(1 + math.exp((h - piso) / R.BLANDO))
+		-- el río corre por un valle: el relieve baja hacia el cauce en vez de formar un cañón
+		local dr = distRio[indice(celdaDe(x), celdaDe(z))]
+		if dr < RIO + ORILLA + R.VALLE_RIO then
+			local t = Ruido.suave(RIO + ORILLA * 0.5, RIO + ORILLA + R.VALLE_RIO, dr)
+			h = piso + (h - piso) * (0.22 + 0.78 * t)
+		end
 		local e = math.max(math.abs(x), math.abs(z)) / MITAD
 		h += Ruido.suave(0.78, 0.97, e) * (100 + 45 * Ruido.fbm(x * 0.01, z * 0.01, 2, oz, ox))
 		for _, c in crestas do
@@ -102,7 +122,7 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 	end
 
 	for _, zona in disp.zonas do
-		local h = math.clamp(base(zona.pos.X, zona.pos.Y), AGUA + 6, 58)
+		local h = math.clamp(base(zona.pos.X, zona.pos.Y), AGUA + 6, R.TOPE_ZONA)
 		zona.altura = if zona.tipo == "salida" then h + 14 else h
 	end
 
@@ -116,10 +136,6 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 		end
 		return h
 	end
-
-	local total = N * N
-	local distRio = table.create(total, math.huge)
-	estampar(distRio, nil, disp.rio, nil, RIO + ORILLA + 60)
 
 	-- alturas de los senderos: siguen el terreno suavizado, bajan poco a poco hasta la orilla
 	-- antes de cruzar el río y nunca superan PENDIENTE_CAMINO entre muestras. Los limitadores
@@ -162,7 +178,7 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 	local distCamino = table.create(total, math.huge)
 	local alturaCamino = table.create(total, 0)
 	for _, cam in disp.caminos do
-		estampar(distCamino, alturaCamino, cam.puntos, cam.alturas, ANCHO + 14)
+		estampar(distCamino, alturaCamino, cam.puntos, cam.alturas, ANCHO + 22)
 	end
 
 	local alturas = table.create(total, 0)
@@ -175,12 +191,12 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 			local h = conZonas(x, z, h0)
 			-- relieve fino fuera de las mesetas
 			if math.abs(h - h0) < 0.5 then
-				h += Ruido.fbm(x * 0.05, z * 0.05, 2, oz, ox) * 1.6
+				h += Ruido.fbm(x * 0.05, z * 0.05, 2, oz, ox) * R.FINO
 			end
 			local dc = distCamino[i]
 			local wc = 0
-			if dc < ANCHO + 12 then
-				wc = 1 - Ruido.suave(ANCHO, ANCHO + 12, dc)
+			if dc < ANCHO + 20 then
+				wc = 1 - Ruido.suave(ANCHO, ANCHO + 20, dc)
 				h += (alturaCamino[i] - h) * wc
 			end
 			local dr = distRio[i]

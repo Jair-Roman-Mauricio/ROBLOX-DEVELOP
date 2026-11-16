@@ -2,9 +2,11 @@
 --[[
 	Vegetación de selva construida con partes. Cada función recibe el punto del suelo y
 	devuelve un Model. Las copas no colisionan ni reciben raycasts para no estorbar.
+	Las rocas usan el modelo importado RocaSelva cuando sus mallas cargan (ver Mallas).
 ]]
 
 local Kit = require(script.Parent.Kit)
+local Mallas = require(script.Parent.Mallas)
 
 local M = Enum.Material
 local BOLA = Enum.PartType.Ball
@@ -252,12 +254,13 @@ function Vegetacion.hojaGrande(rng: Random, suelo: Vector3, padre: Instance): Mo
 	return m
 end
 
-function Vegetacion.roca(rng: Random, suelo: Vector3, padre: Instance): Model
+-- Roca de partes: la que se usa cuando el modelo RocaSelva no existe o no carga.
+local function rocaPartes(rng: Random, suelo: Vector3, padre: Instance, escala: number): Model
 	local m = Kit.modelo("Roca", padre)
 	local color = Kit.variar(Color3.fromRGB(96, 100, 92), rng, 0.06)
 	for _ = 1, rng:NextInteger(1, 3) do
-		local tam = Vector3.new(rng:NextNumber(3, 9), rng:NextNumber(2, 6), rng:NextNumber(3, 9))
-		local o = Vector3.new(rng:NextNumber(-3, 3), tam.Y * 0.2, rng:NextNumber(-3, 3))
+		local tam = Vector3.new(rng:NextNumber(3, 9), rng:NextNumber(2, 6), rng:NextNumber(3, 9)) * escala
+		local o = Vector3.new(rng:NextNumber(-3, 3) * escala, tam.Y * 0.2, rng:NextNumber(-3, 3) * escala)
 		local cf = CFrame.new(suelo + o)
 			* CFrame.Angles(rng:NextNumber(-0.4, 0.4), rng:NextNumber(0, math.pi * 2), rng:NextNumber(-0.4, 0.4))
 		Kit.parte(m, cf, tam, color, if rng:NextNumber() < 0.5 then M.Rock else M.Slate)
@@ -273,6 +276,81 @@ function Vegetacion.roca(rng: Random, suelo: Vector3, padre: Instance): Model
 		end
 	end
 	return m
+end
+
+-- Medidas del molde RocaSelva: base de la piedra respecto al pivote y lado mayor en planta.
+type MedidasRoca = { base: CFrame, ancho: number, alto: number }
+local medidasRoca: MedidasRoca? = nil
+
+local function medirRoca(molde: Model): MedidasRoca?
+	if medidasRoca then
+		return medidasRoca
+	end
+	local piedra = molde:FindFirstChild("Roca", true)
+	if not piedra or not piedra:IsA("BasePart") then
+		warn("[Selva] RocaSelva sin MeshPart 'Roca'; se usan rocas de partes")
+		return nil
+	end
+	-- caja alineada con el mundo de la piedra, aunque el importador la haya dejado girada
+	local cf, t = piedra.CFrame, piedra.Size / 2
+	local r, u, f = cf.RightVector, cf.UpVector, cf.LookVector
+	local mitad = Vector3.new(
+		math.abs(r.X) * t.X + math.abs(u.X) * t.Y + math.abs(f.X) * t.Z,
+		math.abs(r.Y) * t.X + math.abs(u.Y) * t.Y + math.abs(f.Y) * t.Z,
+		math.abs(r.Z) * t.X + math.abs(u.Z) * t.Y + math.abs(f.Z) * t.Z
+	)
+	local pie = cf.Position - Vector3.new(0, mitad.Y, 0)
+	local medidas: MedidasRoca = {
+		base = molde:GetPivot():ToObjectSpace(CFrame.new(pie)),
+		ancho = math.max(mitad.X, mitad.Z) * 2,
+		alto = mitad.Y * 2,
+	}
+	medidasRoca = medidas
+	return medidas
+end
+
+-- Copia del modelo RocaSelva con `ancho` studs de lado mayor. `vegetacion` conserva los
+-- árboles y raíces que crecen sobre la piedra; sin ella queda solo la piedra (más barata).
+local function rocaMalla(rng: Random, suelo: Vector3, padre: Instance, ancho: number, vegetacion: boolean): Model?
+	local molde = Mallas.obtener("RocaSelva")
+	local medidas = if molde then medirRoca(molde) else nil
+	if not molde or not medidas then
+		return nil
+	end
+	local m = molde:Clone()
+	m.Name = "Roca"
+	for _, d in m:GetDescendants() do
+		if d:IsA("BasePart") then
+			local piedra = d.Name == "Roca"
+			if not piedra and not vegetacion then
+				d:Destroy()
+				continue
+			end
+			d.Anchored = true
+			d.CanTouch = false
+			d.CanCollide = piedra
+			d.CanQuery = piedra
+			d.CastShadow = d.Name ~= "Hojas"
+		end
+	end
+	local k = ancho / medidas.ancho
+	m:ScaleTo(k)
+	-- hundida en el suelo: tapa la base y evita que un lado quede en el aire en las laderas
+	local hundir = medidas.alto * k * (if vegetacion then 0.2 else 0.16)
+	local destino = CFrame.new(suelo - Vector3.new(0, hundir, 0)) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+	local base = medidas.base.Rotation + medidas.base.Position * k
+	m:PivotTo(destino * base:Inverse())
+	m.Parent = padre
+	return m
+end
+
+function Vegetacion.roca(rng: Random, suelo: Vector3, padre: Instance): Model
+	return rocaMalla(rng, suelo, padre, rng:NextNumber(7, 15), false) or rocaPartes(rng, suelo, padre, 1)
+end
+
+-- Peñasco con árboles encima: hito del paisaje. Necesita unos 20 studs libres alrededor.
+function Vegetacion.rocaGrande(rng: Random, suelo: Vector3, padre: Instance): Model
+	return rocaMalla(rng, suelo, padre, rng:NextNumber(22, 36), true) or rocaPartes(rng, suelo, padre, 2.2)
 end
 
 function Vegetacion.tronco(rng: Random, suelo: Vector3, padre: Instance): Model
