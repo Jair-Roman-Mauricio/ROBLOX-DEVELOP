@@ -33,6 +33,19 @@ marcadas entre ambos, y todo conectado por quebradas que bajan hacia el río.
   (ceros de un ruido fractal) con fondo plano y embarrado, ladera corta y cima redondeada. Son
   lomadas en las terrazas bajas y colinas en las altas.
 
+## Montañas y árboles gigantes (decisión del equipo)
+
+La selva baja real casi no tiene montañas, pero jugando se sentía como un bosque llano. El mapa
+mezcla ahora selva baja en los valles con relieve de selva alta:
+
+- **Macizos** (`F_MONTE`, `MONTE_UMBRAL`, `MONTE_BASE`, `MONTE_CUMBRE`): montañas de 150 a 340
+  studs con paredes casi verticales y cumbre en meseta con filos.
+- **Peñascos** (`PENASCO`): torres de roca sueltas de 50 a 100 studs.
+- Solo se levantan lejos de senderos y zonas (`MONTE_CERCA`, `MONTE_LEJOS`): la ruta corre por
+  los valles, entre paredes, y nunca tiene que cortar una montaña.
+- **Árboles** (`Config.Mapa.Vegetacion.ALTO_*`): el dosel real mide de 30 a 45 m y los emergentes
+  de 50 a 60 m. En studs: árboles de 62 a 118, ceibas de 150 a 210.
+
 ## Escala
 
 1 stud ≈ 0,28 m. Una colina real de 20 a 40 m serían 70 a 140 studs; el juego usa hasta 40

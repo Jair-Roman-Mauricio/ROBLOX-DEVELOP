@@ -6,8 +6,13 @@
 	cargan (ver Mallas); si no, se construyen con partes.
 ]]
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
 local Kit = require(script.Parent.Kit)
 local Mallas = require(script.Parent.Mallas)
+
+local V = Config.Mapa.Vegetacion
 
 local M = Enum.Material
 local BOLA = Enum.PartType.Ball
@@ -45,6 +50,14 @@ local function lianas(m: Model, rng: Random, desde: Vector3, radio: number, cant
 end
 
 -- Ceiba gigante: tronco ancho, raíces tablares, copa amplia y lianas. Punto de referencia visual.
+-- Lleva un árbol de partes, construido con `alto` studs, a la altura de selva pedida en Config:
+-- lo escala entero desde el pie para que tronco, ramas y copa crezcan en proporción.
+local function crecer(m: Model, suelo: Vector3, alto: number, rango: { number }, rng: Random): Model
+	m.WorldPivot = CFrame.new(suelo)
+	m:ScaleTo(rng:NextNumber(rango[1], rango[2]) / alto)
+	return m
+end
+
 -- Medidas de un molde importado: pie de su malla principal respecto al pivote, lado mayor en
 -- planta y alto. Se calculan una vez por modelo.
 type Medidas = { pie: CFrame, ancho: number, alto: number }
@@ -111,7 +124,7 @@ end
 
 function Vegetacion.ceiba(rng: Random, suelo: Vector3, padre: Instance): Model
 	local alto = rng:NextNumber(50, 72)
-	local importado = arbolMalla(rng, suelo, padre, alto * 1.15)
+	local importado = arbolMalla(rng, suelo, padre, rng:NextNumber(V.ALTO_CEIBA[1], V.ALTO_CEIBA[2]))
 	if importado then
 		return importado
 	end
@@ -155,7 +168,7 @@ function Vegetacion.ceiba(rng: Random, suelo: Vector3, padre: Instance): Model
 		{ forma = BOLA, colision = false, consulta = false }
 	)
 	lianas(m, rng, cima - Vector3.new(0, 4, 0), 16, rng:NextInteger(6, 10))
-	return m
+	return crecer(m, suelo, alto, V.ALTO_CEIBA, rng)
 end
 
 function Vegetacion.arbol(rng: Random, suelo: Vector3, padre: Instance): Model
@@ -187,7 +200,7 @@ function Vegetacion.arbol(rng: Random, suelo: Vector3, padre: Instance): Model
 	if rng:NextNumber() < 0.45 then
 		lianas(m, rng, cima, 6, rng:NextInteger(2, 5))
 	end
-	return m
+	return crecer(m, suelo, alto, V.ALTO_ARBOL, rng)
 end
 
 function Vegetacion.palmera(rng: Random, suelo: Vector3, padre: Instance): Model
@@ -226,7 +239,7 @@ function Vegetacion.palmera(rng: Random, suelo: Vector3, padre: Instance): Model
 		Kit.viga(m, cima, p1, 2.6, 0.2, color, M.Grass, Kit.COPA)
 		Kit.viga(m, p1, p2, 2.1, 0.2, color, M.Grass, Kit.COPA)
 	end
-	return m
+	return crecer(m, suelo, alto, V.ALTO_PALMERA, rng)
 end
 
 function Vegetacion.seco(rng: Random, suelo: Vector3, padre: Instance): Model
@@ -255,7 +268,7 @@ function Vegetacion.seco(rng: Random, suelo: Vector3, padre: Instance): Model
 		end
 	end
 	lianas(m, rng, cima - Vector3.new(0, 2, 0), 4, rng:NextInteger(1, 4))
-	return m
+	return crecer(m, suelo, alto, V.ALTO_SECO, rng)
 end
 
 function Vegetacion.helecho(rng: Random, suelo: Vector3, padre: Instance): Model

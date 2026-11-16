@@ -99,10 +99,10 @@ local function limites(padre: Instance)
 		local o = -m + (k - 0.5) * largo
 		for _, d in
 			{
-				{ Vector3.new(m, 150, o), Vector3.new(4, 600, largo) },
-				{ Vector3.new(-m, 150, o), Vector3.new(4, 600, largo) },
-				{ Vector3.new(o, 150, m), Vector3.new(largo, 600, 4) },
-				{ Vector3.new(o, 150, -m), Vector3.new(largo, 600, 4) },
+				{ Vector3.new(m, 300, o), Vector3.new(4, 900, largo) },
+				{ Vector3.new(-m, 300, o), Vector3.new(4, 900, largo) },
+				{ Vector3.new(o, 300, m), Vector3.new(largo, 900, 4) },
+				{ Vector3.new(o, 300, -m), Vector3.new(largo, 900, 4) },
 			}
 		do
 			Kit.parte(carpeta, CFrame.new(d[1]), d[2], Color3.new(), Enum.Material.SmoothPlastic, {

@@ -7,7 +7,8 @@
 
 	Capas, en orden:
 	  1. relieve de selva baja (Config.Mapa.Relieve): llanura inundable, terrazas y colinas
-	     disecadas por quebradas + borde montañoso + crestas de la salida + cochas
+	     disecadas por quebradas, montañas y peñascos lejos de la ruta + borde montañoso +
+	     crestas de la salida + cochas
 	  2. mesetas de las zonas
 	  3. senderos con altura suavizada y pendiente limitada
 	  4. cauce y orillas del río
@@ -94,6 +95,27 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 	local distRio = table.create(total, math.huge)
 	estampar(distRio, nil, disp.rio, nil, RIO + ORILLA + R.VALLE_RIO)
 
+	-- Distancia a la ruta (senderos y zonas): las montañas y los peñascos solo se levantan lejos
+	-- de ella, así los senderos corren por los valles y no tienen que cortar un macizo.
+	local distRuta = table.create(total, math.huge)
+	do
+		local puntos: { Vector2 } = {}
+		for _, cam in disp.caminos do
+			for j = 1, #cam.puntos, 4 do
+				table.insert(puntos, cam.puntos[j])
+			end
+		end
+		estampar(distRuta, nil, puntos, nil, R.MONTE_LEJOS + 16)
+	end
+	local function lejosDeRuta(x: number, z: number): number
+		local d = distRuta[indice(celdaDe(x), celdaDe(z))]
+		for _, zona in disp.zonas do
+			local dx, dz = x - zona.pos.X, z - zona.pos.Y
+			d = math.min(d, math.sqrt(dx * dx + dz * dz) - zona.radio)
+		end
+		return Ruido.suave(R.MONTE_CERCA, R.MONTE_LEJOS, d)
+	end
+
 	-- Quebradas: 0 en el eje del cauce y crece hacia las lomas. Los ceros de un ruido fractal
 	-- forman líneas que se ramifican, parecidas a una red de drenaje; una segunda red más fina
 	-- hace de afluentes, menos hondos.
@@ -136,6 +158,23 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 		local desnivel = R.COLINAS * (0.3 + 0.7 * quebrado) * (0.25 + 0.75 * g) * firme
 		h += desnivel * (ladera * (1 + 0.35 * cima) - 0.45)
 		h = math.max(h, piso - 1 + ladera)
+
+		-- Montañas de selva alta: macizos de paredes casi verticales y cumbre en meseta con filos,
+		-- y peñascos sueltos (torres de roca) entre ellos.
+		local libre = lejosDeRuta(x, z) * firme
+		if libre > 0 then
+			local macizo = Ruido.fbm(wx * R.F_MONTE + 40.2, wz * R.F_MONTE - 12.8, 4, oz, ox)
+			local pared = Ruido.suave(R.MONTE_UMBRAL, R.MONTE_UMBRAL + 0.09, macizo)
+			if pared > 0 then
+				local cumbre = Ruido.suave(R.MONTE_UMBRAL + 0.05, 0.45, macizo)
+				local filo = 1 - math.min(1, math.abs(Ruido.fbm(wx * 0.0052 + 3.3, wz * 0.0052 + 9.4, 3, ox, oz)) * 2.4)
+				h += libre * pared * (R.MONTE_BASE + R.MONTE_CUMBRE * cumbre * (0.5 + 0.5 * filo))
+			end
+			local torre = Ruido.suave(0.27, 0.33, Ruido.fbm(x * 0.0105 + 5.5, z * 0.0105 + 70.1, 2, ox, oz))
+			if torre > 0 then
+				h += libre * torre * R.PENASCO * (0.65 + 0.7 * math.abs(Ruido.fbm(x * 0.004, z * 0.004, 1, oz, ox)))
+			end
+		end
 
 		local b = dr - (RIO + ORILLA)
 		if b > -6 and b < 70 then
@@ -352,7 +391,7 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 					end
 				elseif pend > 1.15 then
 					mat = M.Rock
-				elseif h > 100 then
+				elseif h > 100 and pend > 0.45 then
 					mat = if ruido > 0 then M.Rock else M.Slate
 				elseif pend > 0.7 then
 					mat = if ruido > 0 then M.Ground else M.Rock
@@ -486,7 +525,7 @@ function Terreno.limpiar()
 	local paso = BLOQUE * CELDA
 	for x = -MITAD, MITAD - 1, paso do
 		for z = -MITAD, MITAD - 1, paso do
-			terreno:FillBlock(CFrame.new(x + paso / 2, 130, z + paso / 2), Vector3.new(paso, 420, paso), M.Air)
+			terreno:FillBlock(CFrame.new(x + paso / 2, 300, z + paso / 2), Vector3.new(paso, 760, paso), M.Air)
 		end
 		task.wait()
 	end

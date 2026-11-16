@@ -133,6 +133,14 @@ Config.Mapa = {
 		FONDO = 0.1, -- ancho del fondo plano de la quebrada
 		LADERA = 0.5, -- ancho de la ladera
 		FINO = 2.2, -- irregularidad a ras de suelo
+		-- montañas: macizos de paredes casi verticales, solo lejos de senderos y zonas
+		F_MONTE = 0.0017, -- frecuencia de los macizos (más bajo = macizos más grandes)
+		MONTE_UMBRAL = 0.06, -- más bajo = más superficie montañosa
+		MONTE_BASE = 150, -- altura de la pared
+		MONTE_CUMBRE = 190, -- altura extra hasta la cumbre
+		MONTE_CERCA = 40, -- a esta distancia de la ruta empieza a levantarse
+		MONTE_LEJOS = 170, -- y a esta ya tiene toda su altura
+		PENASCO = 75, -- altura de las torres de roca sueltas
 		COCHAS = 2, -- lagunas de meandro abandonado
 		COCHA_RADIO = 30,
 		TOPE_ZONA = 80, -- altura máxima de la meseta de una zona
@@ -147,6 +155,11 @@ Config.Mapa = {
 	ESPEJO_ALEATORIO = true, -- refleja el mapa este-oeste en la mitad de las semillas
 	Vegetacion = {
 		CEIBAS = 0.1, -- fracción de los árboles que son ceibas gigantes (modelo ArbolSelva)
+		-- alturas en studs (1 stud ≈ 0,28 m): dosel real de 30 a 45 m, emergentes de 50 a 60 m
+		ALTO_CEIBA = { 150, 210 },
+		ALTO_ARBOL = { 62, 118 },
+		ALTO_PALMERA = { 34, 62 },
+		ALTO_SECO = { 40, 70 },
 		ARBOLES = 990,
 		HELECHOS = 2090,
 		ARBUSTOS = 860,
