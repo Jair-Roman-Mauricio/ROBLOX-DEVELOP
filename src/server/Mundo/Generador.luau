@@ -4,7 +4,10 @@
 	  1. disposición (grafo de zonas, río, senderos)
 	  2. terreno calculado en memoria
 	  3. validación de accesibilidad; si falla se prueba otra semilla
-	  4. escritura del terreno, puentes, zonas y vegetación
+	  4. escritura del terreno, puentes, zonas, culto, vegetación y detalles
+
+	Lagos y arroyos tienen su propio nivel de agua: un cruce se detecta comparando con
+	datos.nivelAgua, y los cruces cortos (arroyos) se pasan por un tronco caído.
 
 	Validación (CONTEXT.md: "el generador debe producir una ruta válida"):
 	  - ningún sendero empieza o termina en el agua
@@ -18,6 +21,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Catalogo = require(script.Parent.Parent.Modelos.CatalogoVegetacion)
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Atmosfera = require(script.Parent.Parent.Modelos.Atmosfera)
+local Culto = require(script.Parent.Parent.Modelos.Culto)
+local Detalles = require(script.Parent.Detalles)
 local Disposicion = require(script.Parent.Disposicion)
 local Dispersion = require(script.Parent.Dispersion)
 local Terreno = require(script.Parent.Terreno)
@@ -26,7 +32,6 @@ local Estructuras = require(script.Parent.Parent.Modelos.Estructuras)
 local Kit = require(script.Parent.Parent.Modelos.Kit)
 
 local C = Config.Mapa
-local AGUA = C.NIVEL_AGUA
 
 export type ZonaMundo = {
 	id: string,
@@ -47,7 +52,7 @@ export type Mundo = {
 	disposicion: Disposicion.Disposicion,
 }
 
-type Puente = { desde: Vector3, hasta: Vector3 }
+type Puente = { desde: Vector3, hasta: Vector3, nivel: number }
 
 local Generador = {}
 
@@ -57,16 +62,19 @@ local function validar(disp: Disposicion.Disposicion, datos: Terreno.Datos): (bo
 		local pts = cam.puntos
 		local enAgua = false
 		local inicio = 1
+		local nivel = 0
 		local anteriorSeco = true
 		local hAnterior = datos.altura(pts[1].X, pts[1].Y)
 		for i, p in pts do
 			local h = datos.altura(p.X, p.Y)
-			local seco = h >= AGUA + 1
+			local agua = datos.nivelAgua(p.X, p.Y)
+			-- el borde mismo del cauce cuenta como agua: el puente o tronco lo salva
+			local seco = h >= agua + 1 and datos.distanciaAgua(p.X, p.Y) > 4
 			if not seco and not enAgua then
 				if i == 1 then
 					return false, ("el sendero %s-%s empieza en el agua"):format(cam.a, cam.b), puentes
 				end
-				enAgua, inicio = true, i - 1
+				enAgua, inicio, nivel = true, i - 1, agua
 			elseif seco and enAgua then
 				enAgua = false
 				local a = pts[inicio]
@@ -77,6 +85,7 @@ local function validar(disp: Disposicion.Disposicion, datos: Terreno.Datos): (bo
 				table.insert(puentes, {
 					desde = Vector3.new(a.X, datos.altura(a.X, a.Y), a.Y),
 					hasta = Vector3.new(p.X, h, p.Y),
+					nivel = nivel,
 				})
 			elseif seco and anteriorSeco and i > 1 and math.abs(h - hAnterior) > 3.2 then
 				return false, ("pendiente excesiva en %s-%s"):format(cam.a, cam.b), puentes
@@ -169,7 +178,11 @@ function Generador.generar(semilla: number, padre: Instance, progreso: (number, 
 	carpetaPuentes.Name = "Puentes"
 	carpetaPuentes.Parent = carpeta
 	for _, p in puentes do
-		Estructuras.puente(rng, p.desde, p.hasta, AGUA, carpetaPuentes)
+		if (p.hasta - p.desde).Magnitude <= C.Agua.TRONCO_MAX then
+			Estructuras.troncoPuente(rng, p.desde, p.hasta, carpetaPuentes)
+		else
+			Estructuras.puente(rng, p.desde, p.hasta, p.nivel, carpetaPuentes)
+		end
 	end
 
 	progreso(0.55, "Levantando los pueblos")
@@ -182,7 +195,17 @@ function Generador.generar(semilla: number, padre: Instance, progreso: (number, 
 		local centro = Kit.suelo(z.pos.X, z.pos.Y) or Vector3.new(z.pos.X, z.altura, z.pos.Y)
 		local modelo: Model
 		if z.tipo == "pueblo" then
-			modelo = Zonas.pueblo(rng, centro, z.radio, datos, carpetaZonas)
+			local lago: Disposicion.Lago? = nil
+			if z.estilo == "palafitos" then
+				for _, l in disp.lagos do
+					if l.tipo == "pantano" then
+						lago = l
+					end
+				end
+			end
+			modelo = Zonas.pueblo(rng, centro, z, datos, carpetaZonas, lago)
+		elseif z.tipo == "templo" then
+			modelo = Zonas.templo(rng, centro, disp.porId.F.pos - z.pos, datos, carpetaZonas)
 		elseif z.tipo == "inicio" then
 			modelo, spawns = Zonas.inicio(rng, centro, datos, carpetaZonas)
 		elseif z.tipo == "helicoptero" then
@@ -198,13 +221,32 @@ function Generador.generar(semilla: number, padre: Instance, progreso: (number, 
 		task.wait()
 	end
 
+	-- el culto: santuarios junto a los senderos, mirando al sendero; y la cascada
+	local carpetaCulto = Instance.new("Folder")
+	carpetaCulto.Name = "Culto"
+	carpetaCulto.Parent = carpeta
+	for _, s in disp.santuarios do
+		local p = Kit.suelo(s.pos.X, s.pos.Y) or Vector3.new(s.pos.X, datos.altura(s.pos.X, s.pos.Y), s.pos.Y)
+		Culto.santuario(rng, CFrame.lookAt(p, p + Vector3.new(s.frente.X, 0, s.frente.Y)), carpetaCulto)
+	end
+	for _, l in disp.lagos do
+		if l.tipo == "cascada" then
+			local fuera = Vector3.new(l.fuera.X, 0, l.fuera.Y)
+			local pie = Vector3.new(l.centro.X, l.nivel, l.centro.Y) + fuera * (l.radio + 1)
+			Atmosfera.cascada(carpetaCulto, pie, fuera, C.Agua.CASCADA_ALTO, rng)
+		end
+	end
+
 	progreso(0.6, "Haciendo crecer la vegetación")
 	local carpetaVeg = Instance.new("Folder")
 	carpetaVeg.Name = "Vegetacion"
 	carpetaVeg.Parent = carpeta
-	Dispersion.poblar(rng, disp, datos, carpetaVeg, function(f)
-		progreso(0.6 + f * 0.4, "Haciendo crecer la vegetación")
+	local claros = Dispersion.poblar(rng, disp, datos, carpetaVeg, function(f)
+		progreso(0.6 + f * 0.35, "Haciendo crecer la vegetación")
 	end)
+
+	progreso(0.95, "Despertando la selva")
+	Detalles.decorar(rng, disp, datos, carpeta, carpetaVeg, claros)
 
 	-- los jugadores aparecen mirando hacia el primer pueblo
 	local a, b = disp.porId.A.pos, disp.porId.B.pos

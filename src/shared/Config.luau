@@ -139,6 +139,7 @@ Config.Mapa = {
 		COCHAS = 2, -- lagunas de meandro abandonado
 		COCHA_RADIO = 30,
 		TOPE_ZONA = 80, -- altura máxima de la meseta de una zona
+		LADERA_ALDEA = 16, -- desnivel entre el centro y el borde de la aldea de ladera
 	},
 	ANCHO_CAMINO = 7, -- medio ancho del sendero
 	ANCHO_RIO = 16, -- medio ancho del cauce
@@ -167,11 +168,64 @@ Config.Mapa = {
 		LADERA = 0.42, -- pendiente (desnivel / distancia) a partir de la cual es ladera
 		CLAROS = 16, -- claros abiertos por la caída de un árbol
 		CLARO_RADIO = { 16, 30 },
-		ESPACIO = { selva = 19, ribera = 14, ladera = 30 }, -- distancia mínima entre árboles del dosel
+		-- distancia mínima entre árboles del dosel
+		ESPACIO = { selva = 19, ribera = 14, ladera = 30, pantano = 24, santuario = 13, borde = 13 },
 		CORREDOR = 30, -- cada cuántos studs un árbol enmarca el sendero (alternando lados)
 		HITO_SENDERO = 280, -- cada cuántos studs de sendero hay una ceiba emergente a la vista
 		HITO_ESPACIO = 150, -- distancia mínima entre ceibas
+		-- ecotopos del culto (docs/SELVA-CULTO.md)
+		BORDE = 0.8, -- fracción de la mitad del mapa a partir de la cual empieza el borde no jugable
+		ARBOLES_BORDE = 200, -- árboles extra solo en el borde: muro de selva que cierra el mapa
+		ARBOLES_SANTUARIO = 70, -- árboles extra alrededor del templo
+		SANTUARIO = 150, -- studs alrededor del templo que cuentan como santuario
+		PANTANO = 45, -- studs alrededor del lago negro donde todo está muerto
+		MUERTOS_EN_LAGO = 10, -- árboles secos de pie dentro del lago negro
 	},
+	-- Agua además del río: lagos, cascada, arroyos y rápidos (docs/SELVA-CULTO.md)
+	Agua = {
+		PANTANO_RADIO = { 38, 58 }, -- lago negro junto a la aldea de palafitos
+		CASCADA_RADIO = 34, -- lago pequeño al pie de la cascada
+		CASCADA_ALTO = 46, -- caída de la cascada desde la cresta
+		ARROYOS = { 3, 4 }, -- nacimientos (con el del lago); los que se atascan no se excavan: llegan 1–3
+		ARROYO_ANCHO = 4, -- medio ancho del cauce
+		ARROYO_HONDO = 2.2,
+		RAPIDOS = 3, -- tramos del río poco profundos, con rocas
+		RAPIDO_LARGO = 36,
+		TRONCO_MAX = 26, -- un cruce más corto se pasa por un tronco caído en vez de un puente
+		Sonidos = {
+			Cascada = { id = 9120552550, volumen = 0.8 }, -- ProSoundEffects "Waterfall Steady Stream 1"
+			Arroyo = { id = 9113996221, volumen = 0.45 }, -- "Creek Night Water Flowing Softly 2"
+			Pantano = { id = 9112881910, volumen = 0.4 }, -- "Swamp Insect Swells 2"
+		},
+	},
+	-- El culto a la serpiente que une el mapa: santuarios en los senderos, un altar en cada
+	-- aldea y el templo escalonado (docs/SELVA-CULTO.md)
+	Culto = {
+		SANTUARIOS = 5,
+		SANTUARIO_ESPACIO = 260, -- distancia mínima entre santuarios
+		TEMPLO_PISOS = 7,
+		TEMPLO_BASE = 120, -- lado de la base en studs
+		TEMPLO_PISO = 12, -- alto de cada piso: con la cabeza supera el dosel (62–118)
+		OFRENDAS_CADA = 18, -- studs entre ofrendas del rastro que lleva al templo
+		-- tallas, escamas y espirales iguales en todos los altares
+		PIEDRA = Color3.fromRGB(74, 76, 68), -- #4A4C44
+		MUSGO = Color3.fromRGB(79, 107, 42), -- #4F6B2A
+		RAIZ = Color3.fromRGB(58, 42, 27), -- #3A2A1B
+	},
+	-- Atmósfera de la selva (docs/SELVA-CULTO.md)
+	Atmosfera = {
+		HACES = 14, -- haces de luna en claros y sobre el agua
+		LUNA = Color3.fromRGB(169, 194, 214), -- #A9C2D6
+		HONGOS = Color3.fromRGB(127, 224, 176), -- #7FE0B0, muy tenue
+		HONGOS_TRONCOS = 40, -- troncos caídos cerca de senderos con hongos que guían
+		ARANAZOS = 26,
+		MUDAS = 14, -- pieles mudadas colgando de los árboles
+		NIEBLA_RIO = 160, -- studs entre bancos de niebla sobre el río
+		RAICES_SENDERO = 0.3, -- probabilidad de raíces cruzando el sendero cada 60 studs
+		CHARCOS = 40,
+	},
+	-- true = la selva de día (bruma verde y luz suave). También el atributo SelvaDia de Workspace.
+	DIA = false,
 }
 
 -- IDs aprobados: nunca cargar un asset proporcionado por un cliente.
@@ -375,6 +429,37 @@ Config.Iluminacion = {
 		Luciernagas = 12,
 		Niebla = 4,
 	},
+}
+
+-- Selva de día (Config.Mapa.DIA o atributo SelvaDia de Workspace): bruma verde, luz suave
+-- filtrada por el dosel, como la primera foto de referencia.
+Config.Iluminacion.Dia = {
+	Lighting = {
+		ClockTime = 9.5,
+		GeographicLatitude = 0,
+		Brightness = 1.6,
+		Ambient = Color3.fromRGB(46, 60, 44),
+		OutdoorAmbient = Color3.fromRGB(96, 118, 88),
+		ColorShift_Top = Color3.fromRGB(214, 236, 196),
+		ColorShift_Bottom = Color3.fromRGB(30, 46, 30),
+		EnvironmentDiffuseScale = 0.5,
+		EnvironmentSpecularScale = 0.6,
+		ExposureCompensation = 0,
+	},
+	Atmosphere = {
+		Density = 0.4,
+		Offset = 0.1,
+		Color = Color3.fromRGB(150, 178, 132),
+		Decay = Color3.fromRGB(70, 96, 64),
+		Glare = 0.2,
+		Haze = 2.2,
+	},
+	Bloom = { Intensity = 0.4, Size = 26, Threshold = 1.3 },
+	Color = { Brightness = 0, Contrast = 0.08, Saturation = 0.05, TintColor = Color3.fromRGB(232, 246, 222) },
+	Rayos = { Intensity = 0.12, Spread = 0.8 },
+	Luciernagas = 0,
+	Niebla = 3,
+	Agua = (Config.Iluminacion :: any).Noche.Agua,
 }
 
 -- Sensación de estar observado entre pasadas de la serpiente (docs/SERPIENTE-MIEDO.md). Empieza
