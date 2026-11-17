@@ -128,7 +128,7 @@ end
 
 -- Lee los vóxeles originales del pasillo en tramos y los guarda para regenerarlos después.
 local function capturar(puntos: { Vector3 }, t0: number, velocidad: number)
-	local ancho = radio * 1.9 + 8
+	local ancho = math.max(radio * 1.9, radio * S.CRATER + 6) + 8
 	local tramo = 8 -- puntos por tramo (32 studs)
 	local extraCola = largo / velocidad
 	for i = 1, #puntos, tramo do
@@ -163,6 +163,21 @@ local function abrir(p: Vector3, adelante: Vector3, rng: Random)
 			c,
 			rng:NextNumber(2.2, 3.6),
 			if rng:NextNumber() < 0.6 then Enum.Material.Mud else Enum.Material.Ground
+		)
+	end
+end
+
+-- Cráter donde sale y donde se hunde: un hoyo ancho con tierra reventada alrededor.
+local function crater(p: Vector3, rng: Random)
+	local r = radio * S.CRATER
+	terreno:FillBall(p - Vector3.yAxis * r * 0.45, r * 0.7, Enum.Material.Air)
+	for k = 1, 10 do
+		local a = k / 10 * math.pi * 2 + rng:NextNumber(-0.3, 0.3)
+		local c = p + Vector3.new(math.cos(a), 0, math.sin(a)) * r * rng:NextNumber(0.65, 0.85)
+		terreno:FillBall(
+			c + Vector3.yAxis * rng:NextNumber(0, 3),
+			rng:NextNumber(3, 5.5),
+			if rng:NextNumber() < 0.5 then Enum.Material.Mud else Enum.Material.Ground
 		)
 	end
 end
@@ -251,9 +266,17 @@ local function pasada(mundo: Generador.Mundo, rng: Random, primera: boolean, gen
 
 	-- abrir la zanja según avanza la cabeza (desde que asoma hasta que se hunde)
 	local ultimo = 0
+	local kEntrada = math.floor(S.RAMPA * 0.5 / Forma.PASO) + 1
+	local crateres = { [kEntrada] = true, [#puntos - kEntrada + 1] = true }
 	while generacion == gen do
 		local s = (workspace:GetServerTimeNow() - t0) * S.VELOCIDAD
 		local hasta = math.min(#puntos, math.floor(s / Forma.PASO) + 1)
+		for k = ultimo + 1, hasta do
+			if crateres[k] then
+				crateres[k] = nil
+				crater(puntos[k], rng)
+			end
+		end
 		for k = ultimo + 1, hasta, 2 do
 			local d = (k - 1) * Forma.PASO
 			if d > S.RAMPA * 0.6 and d < (#puntos - 1) * Forma.PASO - S.RAMPA * 0.6 then

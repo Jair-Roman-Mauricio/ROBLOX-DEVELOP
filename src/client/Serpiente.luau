@@ -14,8 +14,8 @@
 	serpiente tiene un borde rojo oscuro y ojos que brillan, para que se lea como una silueta
 	en la oscuridad.
 
-	Lo que arrastra (árboles, rocas, plantas) se mueve solo en este cliente y vuelve a su sitio
-	cuando el suelo se regenera. El terreno lo abre y lo cierra el servidor.
+	Lo que rompe (árboles, rocas, plantas) se rompe solo en este cliente y vuelve a crecer en
+	su sitio cuando el suelo se regenera. El terreno lo abre y lo cierra el servidor.
 	Baúl: Camera Systems, Motion Sensitivity and Camera Comfort (temblor reducido con
 	ReducedMotionEnabled), Spatial Audio and Mixing, Boss and Set-Piece Encounters.
 ]]
@@ -43,9 +43,6 @@ local CARPETAS_ARRASTRE = {
 	"HelechosSueltos",
 }
 
--- fracción de la velocidad de la serpiente con la que arrastra lo que lleva encima
-local ARRASTRE = 0.35
-
 local Serpiente = {}
 
 local jugador = Players.LocalPlayer
@@ -55,10 +52,9 @@ type Arrastrado = {
 	modelo: Model,
 	original: CFrame,
 	escala: number,
-	s: number, -- dónde estaba, en studs del recorrido
-	pegado: CFrame?, -- desplazamiento respecto al marco del cuerpo
-	caido: boolean, -- ya pasó la cola y quedó en la zanja
-	vuelve: number, -- hora del servidor en que vuelve a su sitio
+	s: number, -- en qué punto del recorrido lo alcanza la cabeza
+	roto: boolean,
+	vuelve: number, -- hora del servidor en que vuelve a crecer en su sitio
 	devuelto: boolean,
 }
 
@@ -143,7 +139,8 @@ end
 -- Lo que arrastra
 ---------------------------------------------------------------------------------------------
 
--- Plantas, árboles y rocas a menos de un radio y medio del recorrido, ordenados por dónde están.
+-- Plantas, árboles y rocas que la serpiente rompe: los que están a menos de un radio y medio
+-- del recorrido, y todo lo que hay en el cráter por donde sale y por donde se hunde.
 local function buscarArrastrables(ruta: Forma.Ruta, puntos: { Vector3 }, radio: number): { Arrastrado }
 	local selva = workspace:FindFirstChild("Selva")
 	local veg = selva and selva:FindFirstChild("Vegetacion")
@@ -185,14 +182,24 @@ local function buscarArrastrables(ruta: Forma.Ruta, puntos: { Vector3 }, radio: 
 						end
 					end
 					local s = (mejorI - 1) * Forma.PASO
-					if mejor < alcance and s > S.RAMPA and s < ruta.total - S.RAMPA then
+					local plano = Vector2.new(pos.X, pos.Z)
+					local entrada = ruta.superficie(S.RAMPA * 0.5)
+					local salida = ruta.superficie(ruta.total - S.RAMPA * 0.5)
+					local crater = radio * S.CRATER
+					if (plano - Vector2.new(entrada.X, entrada.Z)).Magnitude < crater then
+						s = S.RAMPA * 0.5 -- revientan todos a la vez cuando asoma
+					elseif (plano - Vector2.new(salida.X, salida.Z)).Magnitude < crater then
+						s = ruta.total - S.RAMPA * 0.5
+					elseif mejor >= alcance then
+						s = -1
+					end
+					if s >= 0 then
 						table.insert(lista, {
 							modelo = m,
 							original = m:GetPivot(),
 							escala = m:GetScale(),
 							s = s,
-							pegado = nil,
-							caido = false,
+							roto = false,
 							vuelve = math.huge,
 							devuelto = false,
 						})
@@ -208,6 +215,53 @@ local function buscarArrastrables(ruta: Forma.Ruta, puntos: { Vector3 }, radio: 
 		table.remove(lista, math.random(1, #lista))
 	end
 	return lista
+end
+
+-- Rompe un árbol, una roca o una planta: el original se esconde y una copia se parte en sus
+-- piezas, que saltan hacia fuera y hacia arriba, giran y desaparecen.
+local function romper(a: Arrastrado, desde: Vector3)
+	local m = a.modelo
+	local copia = m:Clone()
+	-- el original se guarda bajo tierra hasta que vuelva a crecer
+	m:PivotTo(a.original - Vector3.yAxis * 2000)
+	local piezas: { BasePart } = {}
+	for _, d in copia:GetDescendants() do
+		if d:IsA("BasePart") then
+			table.insert(piezas, d)
+		elseif d:IsA("Script") or d:IsA("LocalScript") then
+			d:Destroy()
+		end
+	end
+	-- como mucho 14 trozos por objeto; el resto se pierde en el polvo
+	while #piezas > 14 do
+		local i = math.random(1, #piezas)
+		piezas[i]:Destroy()
+		table.remove(piezas, i)
+	end
+	copia.Parent = workspace
+	for _, p in piezas do
+		p.Anchored = false
+		p.CanCollide = true
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Massless = false
+		local fuera = Vector3.new(p.Position.X - desde.X, 0, p.Position.Z - desde.Z)
+		fuera = if fuera.Magnitude > 0.1
+			then fuera.Unit
+			else Vector3.new(math.random() - 0.5, 0, math.random() - 0.5).Unit
+		p.AssemblyLinearVelocity = fuera * math.random(18, 40) + Vector3.yAxis * math.random(30, 60)
+		p.AssemblyAngularVelocity = Vector3.new(math.random(-6, 6), math.random(-6, 6), math.random(-6, 6))
+	end
+	task.delay(2.5, function()
+		for _, p in piezas do
+			if p.Parent then
+				TweenService:Create(p, TweenInfo.new(1.5), { Transparency = 1 }):Play()
+			end
+		end
+		task.wait(1.6)
+		copia:Destroy()
+	end)
+	a.roto = true
 end
 
 ---------------------------------------------------------------------------------------------
@@ -321,30 +375,23 @@ local function pasada(datos: Forma.Pasada)
 		workspace:BulkMoveTo(partes, destinos, Enum.BulkMoveMode.FireCFrameChanged)
 		ancla.CFrame = CFrame.new(ruta.superficie(sCabeza))
 
-		-- recoger lo que la cabeza alcanza y montarlo sobre el lomo
+		-- romper lo que la cabeza alcanza
 		while siguiente <= #arrastrados and arrastrados[siguiente].s <= sCabeza do
 			local a = arrastrados[siguiente]
 			siguiente += 1
 			if a.modelo.Parent then
-				local m = ruta.marco(a.s)
-				-- se levanta hasta el lomo y se queda donde estaba, a lo ancho
-				local subido = a.original + Vector3.yAxis * radio * (1 - S.HUNDIDO) * 0.9
-				local local_ = m:ToObjectSpace(subido)
-				local ancho = math.clamp(local_.X, -radio * 0.6, radio * 0.6)
-				a.pegado = CFrame.new(ancho, local_.Y, 0) * local_.Rotation
-				a.vuelve = t0 + (a.s + largoCuerpo / (1 - ARRASTRE)) / v + S.REGENERA
+				romper(a, ruta.superficie(a.s))
+				a.vuelve = t0 + (a.s + largoCuerpo) / v + S.REGENERA
 				raices.TimePosition = 0
 				raices:Play()
 			end
 		end
 		for _, a in arrastrados do
-			if a.pegado and not a.devuelto then
+			if a.roto and not a.devuelto and ahora >= a.vuelve then
+				-- el suelo ya se cerró: vuelve a crecer en su sitio
+				a.devuelto = true
 				local m = a.modelo
-				if not m.Parent then
-					a.devuelto = true
-				elseif ahora >= a.vuelve then
-					-- el suelo ya se cerró: vuelve a crecer en su sitio
-					a.devuelto = true
+				if m.Parent then
 					m:PivotTo(a.original)
 					m:ScaleTo(a.escala * 0.05)
 					local inicio = os.clock()
@@ -358,18 +405,6 @@ local function pasada(datos: Forma.Pasada)
 							m:ScaleTo(a.escala)
 						end
 					end)
-				else
-					-- el cuerpo se desliza por debajo y lo arrastra despacio; cuando pasa la cola
-					-- se queda caído en la zanja hasta que el suelo se regenera
-					local sObjeto = a.s + (sCabeza - a.s) * ARRASTRE
-					if sObjeto > sCabeza - largoCuerpo then
-						m:PivotTo(ruta.marco(sObjeto) * a.pegado)
-					elseif not a.caido then
-						a.caido = true
-						local suelo = ruta.superficie(sObjeto)
-						local giro = CFrame.Angles(math.rad(math.random(-35, 35)), 0, math.rad(math.random(-35, 35)))
-						m:PivotTo(CFrame.new(suelo - Vector3.yAxis * radio * 0.5) * a.original.Rotation * giro)
-					end
 				end
 			end
 		end
@@ -383,9 +418,9 @@ local function pasada(datos: Forma.Pasada)
 		for _, c in conexiones do
 			c:Disconnect()
 		end
-		-- devolver lo que quedara montado
+		-- devolver a su sitio lo que quedara roto
 		for _, a in arrastrados do
-			if a.pegado and not a.devuelto and a.modelo.Parent then
+			if a.roto and not a.devuelto and a.modelo.Parent then
 				a.modelo:PivotTo(a.original)
 				a.modelo:ScaleTo(a.escala)
 			end
@@ -464,7 +499,7 @@ local function pasada(datos: Forma.Pasada)
 
 	-- cuando todo lo arrastrado volvió a su sitio y la cola ya se hundió, se recoge
 	task.spawn(function()
-		local final = t0 + (ruta.total + largoCuerpo / (1 - ARRASTRE)) / v + S.REGENERA + 4
+		local final = t0 + (ruta.total + largoCuerpo) / v + S.REGENERA + 4
 		while not terminada and workspace:GetServerTimeNow() < final do
 			task.wait(1)
 		end

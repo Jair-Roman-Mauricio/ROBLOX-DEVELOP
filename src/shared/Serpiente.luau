@@ -221,7 +221,9 @@ function Serpiente.forma(): (Forma, boolean)
 				table.insert(piezas, { parte = p, desplazamiento = m:ToObjectSpace(p.CFrame) })
 			end
 			local lomo = modelo:FindFirstChild(("Lomo%02d"):format(k), true)
-			if lomo then
+			if lomo and not S.LOMO then
+				lomo:Destroy()
+			elseif lomo then
 				for _, p in partesDe(lomo) do
 					table.insert(piezas, { parte = p, desplazamiento = m:ToObjectSpace(p.CFrame) })
 				end

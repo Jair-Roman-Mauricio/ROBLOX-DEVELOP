@@ -199,7 +199,9 @@ Config.Serpiente = {
 	HUNDIDO_CABEZA = 1.1, -- la cabeza va más honda: no se la ve de frente
 	REGENERA = 50, -- segundos que tarda el suelo abierto en cerrarse
 	MARGEN_ZONA = 45, -- distancia mínima a pueblos, claro inicial, helicóptero y salida
-	MAX_ARRASTRADOS = 60, -- árboles, rocas y plantas que puede llevar encima a la vez
+	MAX_ARRASTRADOS = 80, -- árboles, rocas y plantas que puede romper en una pasada
+	CRATER = 3.2, -- radio del cráter de entrada y de salida, en radios del cuerpo
+	LOMO = false, -- la vegetación que trae el modelo sobre el lomo (se ve mal al hundirse)
 	-- ProSoundEffects (biblioteca con licencia de Roblox)
 	Sonidos = {
 		Temblor = { id = 9112775181, volumen = 1 }, -- "Earthquake Rumble 2"
