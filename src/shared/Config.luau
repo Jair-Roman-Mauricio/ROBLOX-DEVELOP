@@ -209,6 +209,23 @@ Config.Serpiente = {
 		Raices = { id = 9120818969, volumen = 0.6 }, -- "Wood Crack Busy Clunky Splintering 3"
 		Rocas = { id = 9125884445, volumen = 0.7 }, -- "Rocks Tumble Falling Down Cliff"
 		Rugido = { id = 9113980680, volumen = 0.7 }, -- "Creature Mix Giant Crab Monster Roar Growl 5"
+		Pajaros = { id = 9125738421, volumen = 0.8 }, -- "Pigeon Surges Sudden Bursts Of Birds Flying"
+		Infrasonido = { id = 9112795571, volumen = 1 }, -- "Hollow Rumble 2", tocado más grave
+		Presencia = { id = 9112775612, volumen = 0.7 }, -- "Eerie Presence 1"
+		Siseo = { id = 9119302978, volumen = 0.9 }, -- "Snake Hiss 2"
+	},
+	-- Cómo da miedo sin enseñarse (docs/SERPIENTE-MIEDO.md): se oye antes de verse, la selva se
+	-- calla, la linterna falla cerca de ella, asoma solo los ojos y te sigue con la mirada.
+	Miedo = {
+		SILENCIO = 1.5, -- segundos en que la selva se calla después de que huyan los pájaros
+		LINTERNA = 180, -- a menos de esta distancia la linterna parpadea
+		SISEO = { 6, 14 }, -- segundos entre siseos cuando está a menos de 140 studs
+		ASOMAR_CADA = 34, -- cada cuántos segundos asoma los ojos (no en la cinemática)
+		ASOMAR_DURA = 4,
+		-- valle inquietante: cada TIRON_CADA s se mueve unos segundos a pocos fotogramas
+		TIRON_CADA = 23,
+		TIRON_DURA = 2.2,
+		TIRON_FPS = 5,
 	},
 	-- filtro de miedo: cuanto más cerca está la serpiente, más se apaga el color de la pantalla
 	Filtro = {
@@ -216,7 +233,8 @@ Config.Serpiente = {
 		SATURACION = -0.45,
 		CONTRASTE = 0.22,
 		TINTE = Color3.fromRGB(255, 220, 206),
-		SILUETA = Color3.fromRGB(120, 34, 18), -- borde que la recorta en la oscuridad
+		SILUETA = Color3.fromRGB(120, 34, 18), -- borde casi invisible: se intuye, no se ve
+		SILUETA_TRANSPARENCIA = 0.88,
 		OJOS = Color3.fromRGB(214, 226, 70),
 	},
 }

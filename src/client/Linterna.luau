@@ -72,6 +72,13 @@ function Linterna.iniciar()
 		if not on then
 			return
 		end
+		-- cerca de la serpiente la linterna falla: cortes breves, más seguidos cuanto más cerca
+		local miedo = (jugador:GetAttribute("MiedoSerpiente") or 0) :: number
+		local t = os.clock()
+		local corte = miedo > 0.05 and math.noise(t * 7, 3.3) > 0.55 - miedo * 0.6
+		luz.Brightness = if corte
+			then L.BRILLO * 0.05
+			else L.BRILLO * (1 - miedo * 0.25 * (math.noise(t * 23, 1.1) + 0.5))
 		local char = jugador.Character
 		local cabeza = char and char:FindFirstChild("Head")
 		local cam = workspace.CurrentCamera

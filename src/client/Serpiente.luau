@@ -32,6 +32,7 @@ local Forma = require(ReplicatedStorage.Shared.Serpiente)
 
 local S = Config.Serpiente
 local F = S.Filtro
+local MIEDO = S.Miedo
 local CARPETAS_ARRASTRE = {
 	"Arboles",
 	"Rocas",
@@ -283,9 +284,11 @@ local function pasada(datos: Forma.Pasada)
 	-- el modelo vive bajo tierra hasta que asoma; ojos que brillan y borde de silueta
 	modelo.Name = "Serpiente"
 	local ojos = modelo:FindFirstChild("Ojos", true)
+	local partesOjos: { BasePart } = {}
 	if ojos then
 		for _, p in (if ojos:IsA("BasePart") then { ojos } else ojos:GetDescendants()) :: { Instance } do
 			if p:IsA("BasePart") then
+				table.insert(partesOjos, p)
 				p.Material = Enum.Material.Neon
 				p.Color = F.OJOS
 				if p:IsA("MeshPart") then
@@ -303,7 +306,7 @@ local function pasada(datos: Forma.Pasada)
 	local silueta = Instance.new("Highlight")
 	silueta.FillTransparency = 1
 	silueta.OutlineColor = F.SILUETA
-	silueta.OutlineTransparency = 0.55
+	silueta.OutlineTransparency = F.SILUETA_TRANSPARENCIA
 	silueta.DepthMode = Enum.HighlightDepthMode.Occluded
 	silueta.Parent = modelo
 	modelo.Parent = workspace
@@ -323,6 +326,16 @@ local function pasada(datos: Forma.Pasada)
 	local raices = sonido(S.Sonidos.Raices, ancla, false, 500)
 	local rugido = sonido(S.Sonidos.Rugido, ancla, false, 1400)
 	rugido.PlaybackSpeed = 0.55 -- más grave: algo enorme, no un cangrejo
+	local siseo = sonido(S.Sonidos.Siseo, ancla, false, 260)
+	siseo.PlaybackSpeed = 0.7
+	-- infrasonido: un retumbar muy grave que se siente más que se oye
+	local infra = sonido(S.Sonidos.Infrasonido, ancla, true, 1400)
+	infra.PlaybackSpeed = 0.6
+	local eq = Instance.new("EqualizerSoundEffect")
+	eq.LowGain = 8
+	eq.MidGain = -10
+	eq.HighGain = -40
+	eq.Parent = infra
 	-- polvo y tierra que salta en la zanja, delante de la cabeza
 	local polvo = Instance.new("ParticleEmitter")
 	polvo.Texture = "rbxasset://textures/particles/smoke_main.dds"
@@ -357,10 +370,31 @@ local function pasada(datos: Forma.Pasada)
 	local destinos: { CFrame } = {}
 
 	local function colocar(ahora: number)
+		local rel = ahora - t0
+		local fase = rel % MIEDO.TIRON_CADA
+		if rel > 16 and fase < MIEDO.TIRON_DURA then
+			-- se mueve a tirones, como si le faltaran fotogramas
+			ahora = t0 + math.floor(rel * MIEDO.TIRON_FPS) / MIEDO.TIRON_FPS
+		end
 		local sCabeza = (ahora - t0) * v
 		table.clear(partes)
 		table.clear(destinos)
-		local mc = ruta.marco(sCabeza, radio * (S.HUNDIDO_CABEZA - S.HUNDIDO))
+		local hondo = radio * (S.HUNDIDO_CABEZA - S.HUNDIDO)
+		local asoma = (ahora - t0) % MIEDO.ASOMAR_CADA
+		local k = 0
+		if ahora - t0 > 16 and asoma < MIEDO.ASOMAR_DURA then
+			-- asoma solo hasta los ojos y vuelve a hundirse
+			k = math.sin(asoma / MIEDO.ASOMAR_DURA * math.pi)
+			hondo -= radio * 0.85 * k
+		end
+		local mc = ruta.marco(sCabeza, hondo)
+		local cam = workspace.CurrentCamera
+		if k > 0 and cam then
+			-- mientras asoma gira la cabeza hacia quien mira, como una persona, no como una serpiente
+			local a = mc:PointToObjectSpace(cam.CFrame.Position)
+			local giro = math.clamp(math.atan2(-a.X, -a.Z), -1.1, 1.1) * k
+			mc *= CFrame.Angles(0, giro, 0)
+		end
 		for _, p in forma.cabeza.piezas do
 			table.insert(partes, p.parte)
 			table.insert(destinos, mc * p.desplazamiento)
@@ -410,6 +444,35 @@ local function pasada(datos: Forma.Pasada)
 		end
 	end
 
+	-- antes de nada huyen los pájaros y la selva se calla
+	local pantalla = jugador:WaitForChild("PlayerGui")
+	local pajaros = sonido(S.Sonidos.Pajaros, ancla, false, 1200)
+	ancla.CFrame = CFrame.new(ruta.superficie(S.RAMPA))
+	pajaros:Play()
+	local grupos: { SoundGroup } = {}
+	for _, nombre in { "SelvaAmbiente", "SelvaMusica" } do
+		local g = game:GetService("SoundService"):FindFirstChild(nombre)
+		if g and g:IsA("SoundGroup") then
+			table.insert(grupos, g)
+		end
+	end
+	local volumenes: { number } = {}
+	for i, g in grupos do
+		volumenes[i] = g.Volume
+	end
+	local inicioSilencio = os.clock()
+	local presencia = sonido(S.Sonidos.Presencia, pantalla, true)
+	presencia.Volume = 0
+	presencia:Play()
+	infra.Volume = 0
+	infra:Play()
+	local proximoSiseo = os.clock() + 4
+	local rumor = sonido(S.Sonidos.Temblor, pantalla, true)
+	-- susurros casi humanos bajo el siseo: algo que no debería sonar así
+	local susurros = sonido(Config.Audio.Ambiente.Susurros, pantalla, true)
+	susurros.PlaybackSpeed = 0.82
+	susurros.Volume = 0
+	susurros:Play()
 	local function fin()
 		if terminada then
 			return
@@ -427,6 +490,13 @@ local function pasada(datos: Forma.Pasada)
 		end
 		RunService:UnbindFromRenderStep("TemblorSerpiente")
 		aplicarFiltro(0, 0)
+		jugador:SetAttribute("MiedoSerpiente", 0)
+		for i, g in grupos do
+			TweenService:Create(g, TweenInfo.new(4), { Volume = volumenes[i] }):Play()
+		end
+		presencia:Destroy()
+		rumor:Destroy()
+		susurros:Destroy()
 		modelo:Destroy()
 		if activa and activa.fin == fin then
 			activa = nil
@@ -445,7 +515,6 @@ local function pasada(datos: Forma.Pasada)
 	---------------------------------------------------------------------------------------
 	-- Temblor, sonido y filtro: dependen de la distancia a la cabeza
 	---------------------------------------------------------------------------------------
-	local rumor = sonido(S.Sonidos.Temblor, jugador:WaitForChild("PlayerGui"), true)
 	rumor.Volume = 0
 	rumor:Play()
 	derrumbe:Play()
@@ -485,6 +554,29 @@ local function pasada(datos: Forma.Pasada)
 			rugido:Play()
 		end
 		aplicarFiltro(math.max(fuerza, cerca), if cinematica then 0 else fuerza * 2.5)
+		-- la selva se calla: primero de golpe al huir los pájaros, luego según la cercanía
+		local calla = math.max(
+			math.clamp((os.clock() - inicioSilencio) / MIEDO.SILENCIO, 0, 1) * (if ahora < t0 + 20 then 1 else 0),
+			cerca
+		)
+		for i, g in grupos do
+			g.Volume = volumenes[i] * (1 - calla)
+		end
+		presencia.Volume = S.Sonidos.Presencia.volumen * cerca * cerca
+		-- solo muy cerca, y sin poder decir de dónde salen
+		susurros.Volume = Config.Audio.Ambiente.Susurros.volumen * math.clamp((cerca - 0.6) / 0.4, 0, 1)
+		infra.Volume = S.Sonidos.Infrasonido.volumen * math.max(cerca, fuerza)
+		if d < 140 and os.clock() > proximoSiseo and sCabeza > 0 and sCabeza < ruta.total then
+			proximoSiseo = os.clock() + math.random(MIEDO.SISEO[1], MIEDO.SISEO[2])
+			siseo:Play()
+		end
+		-- la linterna lee esta cercanía y falla
+		jugador:SetAttribute("MiedoSerpiente", if d < MIEDO.LINTERNA then 1 - d / MIEDO.LINTERNA else 0)
+		-- ojos que parpadean de vez en cuando
+		local cerrado = (os.clock() % 4.3) < 0.14
+		for _, p in partesOjos do
+			p.Transparency = if cerrado then 1 else 0
+		end
 		-- sacudida de cámara: más rápida y menos amplia cuanto más lejos
 		local a = fuerza * 0.9 * temblor
 		if a > 0.01 then
