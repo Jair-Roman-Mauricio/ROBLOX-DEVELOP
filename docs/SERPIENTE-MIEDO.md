@@ -24,9 +24,24 @@ Una serpiente da miedo, pero lo que incomoda es que haga cosas que una serpiente
 - **Suena casi humana.** Muy cerca, bajo el siseo, hay susurros.
 - **Parpadea.** Los ojos se apagan un instante cada pocos segundos.
 
+## Sentirse observado (entre pasadas)
+
+Solo la primera aparición tiene cinemática. Después, mientras el jugador siga en la selva,
+`src/client/Acecho.luau` lanza cada 5–16 s (al azar) un evento pequeño. En qué se basa:
+
+| Hallazgo | Fuente | Cómo se aplica |
+|---|---|---|
+| La sensación de ser observado nace sobre todo en la vista: detectamos miradas casi sin darnos cuenta | Shrira en Discover; estudio de Seymour (UTS, 2024) en ScienceDaily y Scientific American | **Ojos** al borde de la vista (38–62°) que desaparecen si los miras de frente |
+| Saber que te vigilan dispara una alerta automática que no se apaga sola | Seymour (UTS, 2024) | El acecho no se detiene entre pasadas: siempre hay algo |
+| Una amenaza impredecible produce ansiedad sostenida; una predecible, solo miedo breve | Grillon y colaboradores (NPU-threat) | Intervalos y tipo de evento al azar, sin repetir el anterior |
+| El que se siente observado se gira a comprobar, y eso lo refuerza | Revisión en British Journal of Psychology (2005), vía fuente secundaria | Arbustos que se mueven y ramas que se parten **detrás**: obligan a girarse |
+| El sonido delata presencia | Shrira en Discover | **Susurros** pegados a un oído y una **respiración** a la espalda |
+
+Eventos y pesos: susurro 4, ojos 3, arbusto 2, rama 2, respiración 1 (`Config.Acecho`).
+
 ## Valores
 
-Todo está en `Config.Serpiente.Miedo`, `Config.Serpiente.Sonidos` y `Config.Serpiente.Filtro`.
+Todo está en `Config.Serpiente.Miedo`, `Config.Acecho`, `Config.Serpiente.Sonidos` y `Config.Serpiente.Filtro`.
 Con "reducir movimiento" activado en Roblox, el temblor de cámara baja al 20 %.
 
 ## Fuentes
@@ -38,3 +53,7 @@ Con "reducir movimiento" activado en Roblox, el temblor de cámara baja al 20 %.
 - https://www.summerengine.com/templates/horror/creature-horror/creature-horror.md
 - https://www.usgamer.net/articles/monster-of-the-week-water-lurker-kaernk-amnesia-the-dark-descent-frictional-games-interview
 - https://frictionalgames.com/?p=954
+- https://discovermagazine.com/mind/ever-feel-like-youre-being-watched
+- https://sciencedaily.com/releases/2024/12/241216214642.htm
+- https://scientificamerican.com/article/how-being-watched-changes-how-you-think/
+- https://pmc.ncbi.nlm.nih.gov/articles/PMC3446242

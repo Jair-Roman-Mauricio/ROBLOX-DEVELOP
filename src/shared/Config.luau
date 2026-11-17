@@ -368,4 +368,25 @@ Config.Iluminacion = {
 	},
 }
 
+-- Sensación de estar observado entre pasadas de la serpiente (docs/SERPIENTE-MIEDO.md). Empieza
+-- cuando termina la primera cinemática. Los intervalos son al azar a propósito: una amenaza
+-- impredecible mantiene la ansiedad, una predecible solo da un susto.
+Config.Acecho = {
+	ESPERA_INICIAL = 30, -- segundos tras la primera aparición antes del primer evento
+	ENTRE = { 5, 16 }, -- segundos al azar entre eventos
+	-- peso de cada evento al elegir el siguiente
+	Pesos = { Susurro = 4, Ojos = 3, Arbusto = 2, Rama = 2, Respiracion = 1 },
+	OJOS_DISTANCIA = { 35, 70 },
+	OJOS_ANGULO = { 38, 62 }, -- grados desde donde mira el jugador: en el borde de la vista
+	OJOS_MIRADA = 12, -- si el jugador los mira a menos de estos grados, desaparecen
+	OJOS_DURA = 7,
+	Sonidos = {
+		Susurros = { 9126213995, 9126214616, 9126213744 }, -- "Whisper Bursts Unintelligible ..."
+		Arbusto = { 9114518560, 9114515722, 9114518077 }, -- "Foliage Rustle", "Foliage Movement"
+		Rama = { 9113582284, 9113581977, 9113582139, 9120258724 }, -- "Branch Snap ..."
+		Respiracion = { 9113984056 }, -- "Creature Mix Weird Deep Monster Breathing 3"
+	},
+	VOLUMEN = { Susurro = 0.75, Arbusto = 0.9, Rama = 0.8, Respiracion = 0.45 },
+}
+
 return Config

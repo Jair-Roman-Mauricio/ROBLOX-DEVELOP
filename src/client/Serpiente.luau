@@ -27,6 +27,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
+local Acecho = require(script.Parent.Acecho)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Forma = require(ReplicatedStorage.Shared.Serpiente)
 
@@ -654,15 +655,21 @@ function Serpiente.iniciar()
 	local remoto = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Serpiente") :: RemoteEvent
 	remoto.OnClientEvent:Connect(function(tipo: string, datos: any)
 		if tipo == "pasada" and typeof(datos) == "table" then
-			pasada(datos :: Forma.Pasada)
+			local p = datos :: Forma.Pasada
+			pasada(p)
+			-- desde que se presenta, la selva ya no deja de observarte
+			Acecho.despertar(if p.primera then p.t0 + Config.Acecho.ESPERA_INICIAL else 0)
 		elseif tipo == "fin" and activa then
 			activa.fin()
 		end
 	end)
 	-- si el jugador sale de la selva (muere o vuelve al lobby), se quita la serpiente
 	jugador:GetAttributeChangedSignal("Zona"):Connect(function()
-		if jugador:GetAttribute("Zona") ~= "Partida" and activa then
-			activa.fin()
+		if jugador:GetAttribute("Zona") ~= "Partida" then
+			Acecho.dormir()
+			if activa then
+				activa.fin()
+			end
 		end
 	end)
 end
