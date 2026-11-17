@@ -41,6 +41,50 @@ local function mallasCargan(raiz: Instance): (boolean, string?)
 	return true, nil
 end
 
+-- Altura del pie del tronco sobre la base de la caja. Muchos árboles de los kits tienen raíces
+-- que bajan y se abren como patas: si se apoya la caja en el suelo, el tronco queda flotando
+-- encima de las raíces. Se lanzan rayos hacia arriba cerca del eje del árbol; el primer
+-- impacto es la parte de abajo del tronco. Devuelve 0 si no encuentra nada razonable.
+local function pieDelTronco(modelo: Model, tam: Vector3): number
+	-- el modelo llega con el pivote en el centro de la base de su caja, en el origen
+	local antes = modelo.Parent
+	local partes: { BasePart } = {}
+	for _, d in modelo:GetDescendants() do
+		if d:IsA("BasePart") and d.Transparency < 1 then
+			table.insert(partes, d)
+			d.CanQuery = true
+		end
+	end
+	-- lejos de todo para que los rayos solo puedan tocar el árbol
+	local BAJO = -20000
+	modelo:PivotTo(CFrame.new(0, BAJO, 0))
+	modelo.Parent = workspace
+	local filtro = RaycastParams.new()
+	filtro.FilterType = Enum.RaycastFilterType.Include
+	filtro.FilterDescendantsInstances = { modelo }
+	local paso = math.max(tam.X, tam.Z) * 0.03
+	local alturas: { number } = {}
+	for _, o in { Vector2.zero, Vector2.new(1, 0), Vector2.new(-1, 0), Vector2.new(0, 1), Vector2.new(0, -1) } do
+		local hit =
+			workspace:Raycast(Vector3.new(o.X * paso, BAJO - 1, o.Y * paso), Vector3.new(0, tam.Y + 2, 0), filtro)
+		if hit then
+			table.insert(alturas, hit.Position.Y - BAJO)
+		end
+	end
+	modelo.Parent = antes
+	modelo:PivotTo(CFrame.identity)
+	for _, p in partes do
+		p.CanQuery = false
+	end
+	if #alturas < 3 then
+		return 0
+	end
+	table.sort(alturas)
+	local mediana = alturas[(#alturas + 1) // 2]
+	-- más de un tercio del alto bajo el primer impacto no es un pie, es otra cosa (una rama)
+	return if mediana < tam.Y * 0.33 then mediana else 0
+end
+
 local function registrar(original: Instance, tipo: string, id: number)
 	if id ~= 0 and propios[tipo] then
 		return
@@ -103,6 +147,10 @@ local function registrar(original: Instance, tipo: string, id: number)
 	end
 	modelo.PrimaryPart = nil
 	modelo.WorldPivot = CFrame.new(caja.Position - Vector3.yAxis * tam.Y / 2)
+	modelo:PivotTo(CFrame.identity)
+	-- el pivote pasa al pie del tronco: las raíces que bajan de ahí quedan enterradas
+	local pie = if tipo == "arbol" or tipo == "palmera" or tipo == "seco" then pieDelTronco(modelo, tam) else 0
+	modelo.WorldPivot = CFrame.new(0, pie, 0)
 	modelo:PivotTo(CFrame.identity)
 	modelo:SetAttribute("AlturaOriginal", tam.Y)
 	-- una plantilla puede pedir otra escala (p. ej. un árbol de copa muy ancha)
