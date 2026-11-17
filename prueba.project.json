@@ -3,12 +3,43 @@
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
-      "Shared": { "$path": "src/shared" },
-      "Modelos": { "$path": "assets" }
+      "Shared": {
+        "$path": "src/shared"
+      },
+      "Modelos": {
+        "$path": "assets"
+      }
     },
-    "ServerScriptService": { "Server": { "$path": "src/server" } },
-    "StarterPlayer": { "StarterPlayerScripts": { "Client": { "$path": "src/client" } } },
-    "Workspace": { "$attributes": { "SelvaProcedural": true } },
-    "Lighting": { "$properties": { "Technology": "Future" } }
-  }
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "Workspace": {
+      "$attributes": {
+        "SelvaProcedural": true
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "Technology": "Future"
+      }
+    },
+    "ReplicatedFirst": {
+      "Carga": {
+        "$path": "src/first"
+      }
+    }
+  },
+  "globIgnorePaths": [
+    "**/*.spec.luau",
+    "**/.DS_Store"
+  ]
 }

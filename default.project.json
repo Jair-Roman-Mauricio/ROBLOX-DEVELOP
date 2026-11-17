@@ -28,6 +28,11 @@
     },
     "Workspace": {
       "$ignoreUnknownInstances": true
+    },
+    "ReplicatedFirst": {
+      "Carga": {
+        "$path": "src/first"
+      }
     }
   }
 }

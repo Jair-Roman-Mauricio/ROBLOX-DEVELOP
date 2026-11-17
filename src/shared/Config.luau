@@ -16,7 +16,7 @@ Config.MAX_POR_EQUIPO = 4
 Config.HELICOPTERO_MALLAS = false
 
 Config.Lobby = {
-	CENTRO = Vector3.new(0, 60, 1700), -- lejos del mapa para que nunca se vean
+	CENTRO = Vector3.new(0, 60, 6000), -- lejos del mapa para que nunca se vean
 	VUELOS = 4,
 	CUENTA_ATRAS = 15, -- segundos desde que se acerca el primer jugador; al terminar despega aunque vaya uno solo
 	CUENTA_EQUIPO_LLENO = 5, -- segundos cuando el equipo ya es de 4
@@ -149,7 +149,7 @@ Config.Mapa = {
 	ATAJOS = { 2, 3 }, -- caminos extra además de la ruta A-B-C-D-E-F
 	ESPEJO_ALEATORIO = true, -- refleja el mapa este-oeste en la mitad de las semillas
 	Vegetacion = {
-		CEIBAS = 0.03, -- fracción de los árboles que son ceibas gigantes (~1.070 partes cada una)
+		CEIBAS = 0.03, -- ceibas de referencia: raíces tablares y silueta original
 		-- alturas en studs (1 stud ≈ 0,28 m): dosel real de 30 a 45 m, emergentes de 50 a 60 m
 		ALTO_CEIBA = { 150, 210 },
 		ALTO_ARBOL = { 62, 118 },
@@ -165,35 +165,39 @@ Config.Mapa = {
 	},
 }
 
+-- IDs aprobados: nunca cargar un asset proporcionado por un cliente.
+Config.VegetacionStore = {
+	ACTIVADO = true,
+	PAQUETES = {
+		{ id = 6432306802, nombre = "Forest Pack - Roblox", oficial = true },
+		{ id = 5678316277, nombre = "Realistic Jungle Foliage - vx0rn", oficial = false },
+		{ id = 12157426374, nombre = "Tropical Jungle Island - PSY0PZ", oficial = false },
+	},
+}
+
 Config.Partida = {
-	-- Cámara en la selva: primera persona fija, con los brazos visibles y un movimiento leve de
-	-- cámara en mano para dar tensión. Con "reducir movimiento" activado en Roblox no se balancea.
+	-- Primera persona estable: tensión por encuadre y periferia, sin movimiento artificial.
 	Camara = {
-		FOV = 64, -- algo cerrado: se ve menos a los lados
-		FOV_CORRIENDO = 4, -- grados que se abre al moverse
-		RESPIRACION = 0.35, -- grados de vaivén lento, siempre
-		PASO = 0.11, -- studs que sube y baja la vista al andar
-		PASO_GIRO = 0.45, -- grados de alabeo al andar
-		VINETA = 0.42, -- oscurecimiento de los bordes (0 = ninguno)
+		FOV = 70,
+		VINETA = 0.26,
 	},
 }
 
 -- Linterna. PROVISIONAL: el inventario y las herramientas son una decisión abierta (CONTEXT.md).
--- Por ahora la tiene quien cogió "Linterna" del botín del helicóptero; no gasta batería.
+-- Cada superviviente recibe una al aterrizar; no gasta batería.
 Config.Linterna = {
 	OBJETO = "Linterna",
 	TECLA = Enum.KeyCode.F,
 	BOTON_MANDO = Enum.KeyCode.ButtonY,
-	ALCANCE = 70, -- studs (máximo del motor: 120)
-	ANGULO = 52,
-	BRILLO = 2.6,
+	ALCANCE = 120, -- studs (máximo del motor: 120)
+	ANGULO = 58,
+	BRILLO = 6,
 	COLOR = Color3.fromRGB(255, 240, 214),
 	ESPERA = 0.25, -- segundos mínimos entre pulsaciones (lo valida el servidor)
 }
 
--- Presets de iluminación que aplica cada cliente. Base: receta "Readable night" del baúl
--- (07 Lighting VFX and Audio/Stylized Lighting Recipes): la noche se marca con tono azul y
--- menos saturación, no con oscuridad. Debe verse una silueta a 50 studs.
+-- Presets locales. Por petición del equipo, la selva apenas revela siluetas: la
+-- lectura del suelo depende de la linterna y de las luces locales de los lugares.
 Config.Iluminacion = {
 	-- receta "Golden hour" del baúl: sol bajo, sombras largas, arriba cálido y abajo violeta
 	Lobby = {
@@ -278,31 +282,33 @@ Config.Iluminacion = {
 		Luciernagas = 0,
 		Niebla = 0,
 	},
+	-- Selva: oscuridad casi total; solo siluetas sin linterna. Las luces locales de
+	-- edificios y antorchas siguen iluminando porque no se modifica ninguna de ellas.
 	Noche = {
 		Lighting = {
-			ClockTime = 21.8,
-			Brightness = 0.9,
-			Ambient = Color3.fromRGB(52, 66, 92),
-			OutdoorAmbient = Color3.fromRGB(80, 100, 130),
-			ColorShift_Top = Color3.fromRGB(150, 175, 255),
-			ColorShift_Bottom = Color3.fromRGB(20, 30, 45),
-			EnvironmentDiffuseScale = 0.25,
-			EnvironmentSpecularScale = 0.3,
-			ExposureCompensation = 0.3,
+			ClockTime = 0,
+			Brightness = 0,
+			Ambient = Color3.fromRGB(3, 4, 6),
+			OutdoorAmbient = Color3.fromRGB(5, 7, 10),
+			ColorShift_Top = Color3.new(0, 0, 0),
+			ColorShift_Bottom = Color3.new(0, 0, 0),
+			EnvironmentDiffuseScale = 0.02,
+			EnvironmentSpecularScale = 0.08,
+			ExposureCompensation = -0.35,
 		},
 		Atmosphere = {
-			Density = 0.36,
+			Density = 0.38,
 			Offset = 0.05,
-			Color = Color3.fromRGB(62, 86, 104),
-			Decay = Color3.fromRGB(26, 40, 54),
+			Color = Color3.fromRGB(12, 18, 26),
+			Decay = Color3.fromRGB(3, 5, 9),
 			Glare = 0,
-			Haze = 1.4,
+			Haze = 1.6,
 		},
-		Bloom = { Intensity = 0.8, Size = 30, Threshold = 0.95 },
-		Color = { Brightness = 0, Contrast = 0.12, Saturation = -0.12, TintColor = Color3.fromRGB(214, 232, 240) },
+		Bloom = { Intensity = 0.15, Size = 18, Threshold = 1.8 },
+		Color = { Brightness = 0, Contrast = 0.14, Saturation = -0.25, TintColor = Color3.fromRGB(230, 237, 250) },
 		Rayos = { Intensity = 0, Spread = 0.6 },
-		Luciernagas = 24,
-		Niebla = 6,
+		Luciernagas = 12,
+		Niebla = 4,
 	},
 }
 

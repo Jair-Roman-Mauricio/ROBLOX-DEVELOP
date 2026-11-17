@@ -15,6 +15,8 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Catalogo = require(script.Parent.Parent.Modelos.CatalogoVegetacion)
+
 local Config = require(ReplicatedStorage.Shared.Config)
 local Disposicion = require(script.Parent.Disposicion)
 local Dispersion = require(script.Parent.Dispersion)
@@ -116,6 +118,8 @@ local function limites(padre: Instance)
 end
 
 function Generador.generar(semilla: number, padre: Instance, progreso: (number, string) -> ()): Mundo
+	progreso(0, "Cargando vegetación de Creator Store")
+	Catalogo.preparar()
 	progreso(0, "Trazando la selva")
 	local disp: Disposicion.Disposicion? = nil
 	local datos: Terreno.Datos? = nil

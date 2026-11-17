@@ -5,14 +5,12 @@
 	  - brazos visibles: en primera persona Roblox oculta el cuerpo; se vuelven a mostrar los
 	    brazos, y cuando el jugador lleva algo en la mano (hoy, la linterna encendida) se levantan
 	    los dos hacia donde mira, con el objeto en la derecha;
-	  - tensión: campo de visión cerrado, respiración lenta, cabeceo al andar y bordes oscuros.
+	  - tensión: encuadre estable y bordes oscuros, sin giros, cabeceo ni zoom al caminar.
 
 	Fuera de la selva no toca nada: esas cámaras son de Cinematica e Intro.
-	Baúl: Camera Systems, Motion Sensitivity and Camera Comfort (el balanceo se apaga con
-	ReducedMotionEnabled), Genre Playbook - Horror and Story.
+	Baúl: Camera Systems, Motion Sensitivity and Camera Comfort, Foliage Props and Scatter.
 ]]
 
-local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -20,7 +18,6 @@ local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage.Shared.Config)
 
 local C = Config.Partida.Camara
-local FOV_NORMAL = 70
 local BRAZOS = {
 	"RightUpperArm",
 	"RightLowerArm",
@@ -109,9 +106,9 @@ function Camara.iniciar()
 	local soldadura: Weld? = nil
 
 	local activa = false
-	local mezcla = 0 -- 0 fuera de la selva, 1 dentro
 	local alzar = 0 -- 0 brazos caídos, 1 levantados con el objeto
-	local fase = 0 -- avance del paso
+	local camaraAnterior: Camera? = nil
+	local fovAnterior = 70
 
 	local function enSelva(): boolean
 		return jugador:GetAttribute("Zona") == "Partida"
@@ -144,6 +141,11 @@ function Camara.iniciar()
 		soldadura = s
 		objeto.Parent = char
 	end
+
+	jugador.CharacterRemoving:Connect(function()
+		soltar()
+		alzar = 0
+	end)
 
 	-- Brazos: después de las animaciones (Stepped), para poder imponer la pose.
 	RunService.Stepped:Connect(function(_t: number, dt: number)
@@ -191,60 +193,41 @@ function Camara.iniciar()
 		end
 	end)
 
-	RunService:BindToRenderStep("CamaraSelva", Enum.RenderPriority.Camera.Value + 1, function(dt: number)
+	-- Solo se modifica el FOV al entrar/salir. Nunca se escribe CFrame ni CameraOffset:
+	-- el ratón, mando y pantalla táctil conservan toda la autoridad sobre la mirada.
+	RunService:BindToRenderStep("CamaraSelva", Enum.RenderPriority.Camera.Value + 1, function()
 		local dentro = enSelva()
-		if not dentro and not activa then
-			return
-		end
-		activa = true
-		mezcla += ((if dentro then 1 else 0) - mezcla) * math.min(1, dt * 4)
-		gui.Enabled = mezcla > 0.02
-		local char = jugador.Character
-		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		local cam = workspace.CurrentCamera
-		if not dentro and mezcla < 0.01 then
-			mezcla = 0
-			activa = false
-			gui.Enabled = false
-			if hum then
-				hum.CameraOffset = Vector3.zero
+		if not cam then
+			return
+		end
+		if activa and (not dentro or cam ~= camaraAnterior) then
+			if camaraAnterior and camaraAnterior.CameraType == Enum.CameraType.Custom then
+				camaraAnterior.FieldOfView = fovAnterior
 			end
+			activa = false
 			soltar()
+		end
+		gui.Enabled = dentro
+		if not dentro or cam.CameraType ~= Enum.CameraType.Custom then
 			return
 		end
-		if not char or not hum or not cam then
+		if not activa then
+			camaraAnterior = cam
+			fovAnterior = cam.FieldOfView
+			cam.FieldOfView = C.FOV
+			activa = true
+		end
+		local char = jugador.Character
+		if not char then
 			return
 		end
-
-		-- Roblox pone los brazos transparentes en primera persona: se vuelven a mostrar
 		for _, nombre in BRAZOS do
 			local parte = char:FindFirstChild(nombre)
 			if parte and parte:IsA("BasePart") then
 				parte.LocalTransparencyModifier = 0
 			end
 		end
-
-		local quieto = GuiService.ReducedMotionEnabled
-		local velocidad = hum.MoveDirection.Magnitude * hum.WalkSpeed
-		local andando = math.clamp(velocidad / 16, 0, 1.4)
-		fase += dt * (6 + andando * 5) * (if andando > 0.05 then 1 else 0)
-		local t = os.clock()
-
-		if cam.CameraType == Enum.CameraType.Custom then
-			cam.FieldOfView = FOV_NORMAL + (C.FOV + C.FOV_CORRIENDO * math.min(1, andando) - FOV_NORMAL) * mezcla
-			if not quieto then
-				-- respiración: vaivén lento e irregular; paso: alabeo al ritmo de la zancada
-				local r = math.rad(C.RESPIRACION) * mezcla
-				local cabeceo = math.noise(t * 0.35, 3.1) * r + math.sin(t * 1.25) * r * 0.35
-				local guinada = math.noise(t * 0.28, 9.7) * r
-				local alabeo = math.noise(t * 0.22, 5.3) * r * 0.8
-					+ math.sin(fase) * math.rad(C.PASO_GIRO) * math.min(1, andando) * mezcla
-				cam.CFrame *= CFrame.Angles(cabeceo, guinada, alabeo)
-			end
-		end
-		hum.CameraOffset = if quieto
-			then Vector3.zero
-			else Vector3.new(0, math.abs(math.sin(fase)) * -C.PASO * math.min(1, andando) * mezcla, 0)
 	end)
 end
 

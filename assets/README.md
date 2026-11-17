@@ -35,7 +35,7 @@ Git no puede arreglar esto; se arregla en Roblox, de una de estas formas:
 
 ## Regla del proyecto
 
-Lo que tenga que verse en el juego se construye con partes. Un modelo 3D externo se usa como
+Para rocas y los respaldos procedurales se mantienen versiones con partes. Un modelo 3D externo puede usarse como
 referencia: `modelos_a_partes.py` saca de él triángulos de baja resolución con el color de la
 textura y el juego los monta con WedgeParts. El helicóptero importado solo se usa si
 `Config.HELICOPTERO_MALLAS` es `true`.
@@ -46,3 +46,11 @@ textura y el juego los monta con WedgeParts. El helicóptero importado solo se u
 2. Importarlo en Studio con el importador 3D, con el grupo como *Creator* si existe.
 3. Guardarlo como `.rbxmx` en esta carpeta (clic derecho → *Save to File*).
 4. Dejar siempre una versión de partes: a quien no tenga permiso el modelo le sale invisible.
+
+## Excepción aprobada: vegetación de Creator Store
+
+Los árboles y plantas usan preferentemente sus MeshParts y SurfaceAppearances originales para conservar la calidad visual. Los paquetes aprobados son Forest Pack (Roblox, 6432306802), Realistic Jungle Foliage (vx0rn, 5678316277) y Trees / Foliage — Tropical, Jungle, Island (PSY0PZ, 12157426374).
+
+`CatalogoVegetacion` intenta obtenerlos en ejecución y conserva únicamente sus elementos visuales. También acepta kits guardados como `.rbxm`/`.rbxmx` bajo `assets/VegetacionStore/` (se sincronizan a ReplicatedStorage.Modelos.VegetacionStore), o colocados en `ServerStorage.VegetacionStore` desde Studio. Preferir ServerStorage si no se necesita versionarlos: evita replicar todas las plantillas al entrar.
+
+Los archivos de los kits aún no se han descargado a este repositorio: la red del entorno no resuelve assetdelivery.roblox.com. La descarga desde Roblox durante Play y los permisos de sus dependencias requieren la comprobación del usuario. Conservar atribución y permisos de las mallas/texturas; no re-subir como propios los assets de otros creadores.

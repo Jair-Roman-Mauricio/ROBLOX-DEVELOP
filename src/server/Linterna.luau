@@ -105,9 +105,10 @@ function Linterna.iniciar()
 			local disponible = pl:GetAttribute("Zona") == "Partida" and tiene(pl)
 			pl:SetAttribute("TieneLinterna", disponible)
 			if disponible then
+				fijar(pl, puede(pl))
 				task.delay(7, function()
 					if pl.Parent and pl:GetAttribute("TieneLinterna") == true then
-						Remotes.Aviso:FireClient(pl, "Pulsa F para encender la linterna.", 5)
+						Remotes.Aviso:FireClient(pl, "Linterna: F en teclado, Y en mando o el botón táctil.", 5)
 					end
 				end)
 			end

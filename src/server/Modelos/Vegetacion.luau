@@ -13,10 +13,13 @@ local Kit = require(script.Parent.Kit)
 local Datos = require(script.Parent.Datos.ModelosSelva)
 local Triangulos = require(script.Parent.Triangulos)
 
+local Catalogo = require(script.Parent.CatalogoVegetacion)
+local Botanica = require(script.Parent.Botanica)
+
 local V = Config.Mapa.Vegetacion
 
-local M = Enum.Material
 local BOLA = Enum.PartType.Ball
+local M = Enum.Material
 
 local HOJAS = {
 	Color3.fromRGB(34, 70, 36),
@@ -25,8 +28,6 @@ local HOJAS = {
 	Color3.fromRGB(62, 100, 46),
 	Color3.fromRGB(40, 78, 54),
 }
-local HOJAS_PALMA = { Color3.fromRGB(58, 102, 48), Color3.fromRGB(72, 112, 52), Color3.fromRGB(48, 90, 44) }
-local HOJAS_CLARAS = { Color3.fromRGB(70, 122, 56), Color3.fromRGB(86, 132, 60), Color3.fromRGB(60, 110, 62) }
 local CORTEZA = {
 	Color3.fromRGB(84, 66, 50),
 	Color3.fromRGB(98, 80, 60),
@@ -35,7 +36,6 @@ local CORTEZA = {
 }
 local LIANA = Color3.fromRGB(52, 72, 40)
 local MUSGO = Color3.fromRGB(70, 96, 52)
-local FLOR = { Color3.fromRGB(196, 52, 40), Color3.fromRGB(220, 120, 40), Color3.fromRGB(180, 40, 70) }
 
 local Vegetacion = {}
 
@@ -82,6 +82,24 @@ local function plantar(m: Model, rng: Random, pie: Vector3, k: number, padre: In
 	m:PivotTo(CFrame.new(pie) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0))
 	m.Parent = padre
 	return m
+end
+
+-- Variantes nativas cacheadas: misma semilla = mismo kit, sin depender de Blender.
+local function nativa(
+	nombre: string,
+	rng: Random,
+	suelo: Vector3,
+	padre: Instance,
+	construir: (Model, Random) -> (),
+	referencia: number,
+	rango: { number }
+): Model
+	local variante = rng:NextInteger(1, 4)
+	local m = clonar(nombre .. variante, function(modelo)
+		construir(modelo, Random.new(variante * 3571 + #nombre * 101))
+	end)
+	m.Name = nombre
+	return plantar(m, rng, suelo, rng:NextNumber(rango[1], rango[2]) / referencia, padre)
 end
 
 local ALTO_MOLDE_CEIBA = 100
@@ -135,6 +153,10 @@ local function moldeCeiba(m: Model)
 end
 
 function Vegetacion.ceiba(rng: Random, suelo: Vector3, padre: Instance): Model
+	local importado = Catalogo.crear("arbol", rng, suelo, padre, V.ALTO_CEIBA)
+	if importado then
+		return importado
+	end
 	local alto = rng:NextNumber(V.ALTO_CEIBA[1], V.ALTO_CEIBA[2])
 	-- las raíces se hunden un poco para que no asomen por debajo en las laderas
 	return plantar(
@@ -147,77 +169,28 @@ function Vegetacion.ceiba(rng: Random, suelo: Vector3, padre: Instance): Model
 end
 
 function Vegetacion.arbol(rng: Random, suelo: Vector3, padre: Instance): Model
-	local m = Kit.modelo("Arbol", padre)
-	local alto = rng:NextNumber(20, 34)
-	local d = rng:NextNumber(1.6, 2.8)
-	local corteza = Kit.variar(Kit.elegir(rng, CORTEZA), rng, 0.05)
-	local cima = suelo + Vector3.new(rng:NextNumber(-3, 3), alto, rng:NextNumber(-3, 3))
-	Kit.cilindro(m, suelo - Vector3.new(0, 1.5, 0), cima, d, corteza, M.Wood)
-
-	local n = rng:NextInteger(4, 6)
-	for i = 1, n do
-		local a = i / n * math.pi * 2 + rng:NextNumber(-0.4, 0.4)
-		local r = rng:NextNumber(3, 7.5)
-		local punta = cima + Vector3.new(math.cos(a) * r, rng:NextNumber(-5, 2), math.sin(a) * r)
-		if i <= 3 then
-			Kit.cilindro(m, suelo:Lerp(cima, rng:NextNumber(0.6, 0.8)), punta, d * 0.4, corteza, M.Wood, Kit.COPA)
-		end
-		local dh = rng:NextNumber(8, 14)
-		Kit.parte(
-			m,
-			CFrame.new(punta + Vector3.new(0, dh * 0.15, 0)),
-			Vector3.one * dh,
-			Kit.variar(Kit.elegir(rng, HOJAS), rng, 0.05),
-			if rng:NextNumber() < 0.5 then M.Grass else M.LeafyGrass,
-			{ forma = BOLA, colision = false, consulta = false }
-		)
+	local importado = Catalogo.crear("arbol", rng, suelo, padre, V.ALTO_ARBOL)
+	if importado then
+		return importado
 	end
-	if rng:NextNumber() < 0.45 then
-		lianas(m, rng, cima, 6, rng:NextInteger(2, 5))
-	end
-	return crecer(m, suelo, alto, V.ALTO_ARBOL, rng)
+	return nativa("Arbol", rng, suelo, padre, function(m, r)
+		Botanica.arbol(m, r, false)
+	end, 80, V.ALTO_ARBOL)
 end
 
 function Vegetacion.palmera(rng: Random, suelo: Vector3, padre: Instance): Model
-	local m = Kit.modelo("Palmera", padre)
-	local alto = rng:NextNumber(16, 30)
-	local curva = Vector3.new(rng:NextNumber(-1, 1), 0, rng:NextNumber(-1, 1)).Unit * rng:NextNumber(2, 8)
-	local c1 = Kit.variar(Color3.fromRGB(110, 94, 70), rng, 0.05)
-	local c2 = Kit.variar(Color3.fromRGB(92, 78, 58), rng, 0.05)
-	local prev = suelo - Vector3.new(0, 1, 0)
-	local segmentos = 6
-	for i = 1, segmentos do
-		local t = i / segmentos
-		local p = suelo + Vector3.new(0, alto * t, 0) + curva * (t * t)
-		Kit.cilindro(m, prev, p, 1.75 - 0.6 * t, if i % 2 == 0 then c1 else c2, M.Wood)
-		prev = p
+	local importado = Catalogo.crear("palmera", rng, suelo, padre, V.ALTO_PALMERA)
+	if importado then
+		return importado
 	end
-	local cima = prev
-	for _ = 1, rng:NextInteger(2, 4) do
-		local o = Vector3.new(rng:NextNumber(-0.8, 0.8), -rng:NextNumber(0.6, 1.2), rng:NextNumber(-0.8, 0.8))
-		Kit.parte(
-			m,
-			CFrame.new(cima + o),
-			Vector3.one * 1.1,
-			Color3.fromRGB(86, 66, 40),
-			M.Wood,
-			{ forma = BOLA, colision = false, consulta = false, sombra = false }
-		)
-	end
-	local n = rng:NextInteger(8, 11)
-	for i = 1, n do
-		local a = i / n * math.pi * 2 + rng:NextNumber(-0.2, 0.2)
-		local dirH = Vector3.new(math.cos(a), 0, math.sin(a))
-		local p1 = cima + dirH * rng:NextNumber(5, 7) + Vector3.new(0, rng:NextNumber(0.5, 2.4), 0)
-		local p2 = p1 + dirH * rng:NextNumber(5, 7) - Vector3.new(0, rng:NextNumber(3, 5.5), 0)
-		local color = Kit.variar(Kit.elegir(rng, HOJAS_PALMA), rng, 0.05)
-		Kit.viga(m, cima, p1, 2.6, 0.2, color, M.Grass, Kit.COPA)
-		Kit.viga(m, p1, p2, 2.1, 0.2, color, M.Grass, Kit.COPA)
-	end
-	return crecer(m, suelo, alto, V.ALTO_PALMERA, rng)
+	return nativa("Palmera", rng, suelo, padre, Botanica.palmera, 45, V.ALTO_PALMERA)
 end
 
 function Vegetacion.seco(rng: Random, suelo: Vector3, padre: Instance): Model
+	local importado = Catalogo.crear("seco", rng, suelo, padre, V.ALTO_SECO)
+	if importado then
+		return importado
+	end
 	local m = Kit.modelo("ArbolSeco", padre)
 	local alto = rng:NextNumber(14, 26)
 	local corteza = Kit.variar(Color3.fromRGB(104, 96, 84), rng, 0.05)
@@ -247,68 +220,27 @@ function Vegetacion.seco(rng: Random, suelo: Vector3, padre: Instance): Model
 end
 
 function Vegetacion.helecho(rng: Random, suelo: Vector3, padre: Instance): Model
-	local m = Kit.modelo("Helecho", padre)
-	local escala = rng:NextNumber(0.8, 1.7)
-	local color = Kit.variar(Kit.elegir(rng, HOJAS_CLARAS), rng, 0.05)
-	local base = suelo + Vector3.new(0, 0.2, 0)
-	local n = rng:NextInteger(7, 10)
-	for i = 1, n do
-		local a = i / n * math.pi * 2 + rng:NextNumber(-0.25, 0.25)
-		local dir = Vector3.new(math.cos(a), 0, math.sin(a))
-		local p1 = base + dir * rng:NextNumber(1.4, 2.4) * escala + Vector3.new(0, rng:NextNumber(1.2, 2.2) * escala, 0)
-		local p2 = p1 + dir * rng:NextNumber(1.4, 2.4) * escala - Vector3.new(0, 0.9 * escala, 0)
-		Kit.viga(m, base, p1, 0.95 * escala, 0.12, color, M.Grass, Kit.FOLLAJE)
-		Kit.viga(m, p1, p2, 0.75 * escala, 0.12, color, M.Grass, Kit.FOLLAJE)
+	local importado = Catalogo.crear("helecho", rng, suelo, padre, { 2.5, 5 })
+	if importado then
+		return importado
 	end
-	return m
+	return nativa("Helecho", rng, suelo, padre, Botanica.helecho, 1, { 0.8, 1.4 })
 end
 
 function Vegetacion.arbusto(rng: Random, suelo: Vector3, padre: Instance): Model
-	local m = Kit.modelo("Arbusto", padre)
-	for _ = 1, rng:NextInteger(2, 4) do
-		local dh = rng:NextNumber(3, 6.5)
-		local o = Vector3.new(rng:NextNumber(-2, 2), dh * 0.3, rng:NextNumber(-2, 2))
-		Kit.parte(
-			m,
-			CFrame.new(suelo + o),
-			Vector3.one * dh,
-			Kit.variar(Kit.elegir(rng, HOJAS), rng, 0.05),
-			M.LeafyGrass,
-			{ forma = BOLA, colision = false, consulta = false, sombra = false }
-		)
+	local importado = Catalogo.crear("arbusto", rng, suelo, padre, { 3, 6.5 })
+	if importado then
+		return importado
 	end
-	return m
+	return nativa("Arbusto", rng, suelo, padre, Botanica.arbusto, 1, { 0.8, 1.35 })
 end
 
--- Plantas de hoja grande (tipo oreja de elefante) y a veces heliconias rojas.
 function Vegetacion.hojaGrande(rng: Random, suelo: Vector3, padre: Instance): Model
-	local m = Kit.modelo("HojaGrande", padre)
-	local color = Kit.variar(Color3.fromRGB(44, 96, 48), rng, 0.05)
-	local tallo = Color3.fromRGB(62, 96, 44)
-	for _ = 1, rng:NextInteger(3, 5) do
-		local a = rng:NextNumber(0, math.pi * 2)
-		local dir = Vector3.new(math.cos(a), 0, math.sin(a))
-		local alto = rng:NextNumber(2.5, 5)
-		local p1 = suelo + dir * rng:NextNumber(0.5, 1.5) + Vector3.new(0, alto, 0)
-		Kit.cilindro(m, suelo, p1, 0.25, tallo, M.Grass, Kit.FOLLAJE)
-		local p2 = p1 + dir * rng:NextNumber(3.5, 5.5) - Vector3.new(0, rng:NextNumber(0.5, 2), 0)
-		Kit.viga(m, p1, p2, rng:NextNumber(2.8, 3.8), 0.15, color, M.Grass, Kit.FOLLAJE)
+	local importado = Catalogo.crear("hojaGrande", rng, suelo, padre, { 4, 7 })
+	if importado then
+		return importado
 	end
-	if rng:NextNumber() < 0.3 then
-		local flor = Kit.elegir(rng, FLOR)
-		for _ = 1, rng:NextInteger(2, 4) do
-			local p = suelo + Vector3.new(rng:NextNumber(-1, 1), rng:NextNumber(2.5, 4.5), rng:NextNumber(-1, 1))
-			Kit.parte(
-				m,
-				CFrame.new(p) * CFrame.Angles(rng:NextNumber(-0.5, 0.5), rng:NextNumber(0, 6), 0),
-				Vector3.new(0.5, 1.6, 0.8),
-				flor,
-				M.SmoothPlastic,
-				{ cuna = true, colision = false, consulta = false, sombra = false }
-			)
-		end
-	end
-	return m
+	return nativa("HojaGrande", rng, suelo, padre, Botanica.hojaGrande, 1, { 0.8, 1.3 })
 end
 
 local MUSGO_ROCA = Color3.fromRGB(62, 84, 48)
