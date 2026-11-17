@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Helicoptero = require(script.Parent.Parent.Modelos.Helicoptero)
 local Kit = require(script.Parent.Parent.Modelos.Kit)
+local Mar = require(script.Parent.Mar)
 local Plataforma = require(script.Parent.Parent.Modelos.Plataforma)
 
 local L = Config.Lobby
@@ -68,12 +69,8 @@ local function cartelFlotante(padre: BasePart, indice: number): (TextLabel, Text
 	return titulo, estado
 end
 
-local function helipuerto(rng: Random, indice: number, centro: Vector3, mirar: Vector3, padre: Instance): Portal
-	local m = Kit.modelo(("Vuelo%d"):format(indice), padre)
-	local cf = CFrame.lookAt(centro, Vector3.new(mirar.X, centro.Y, mirar.Z))
-	local R = L.RADIO_HELIPUERTO
-
-	-- plataforma sobre pilotes
+-- Disco sobre pilotes con anillo, "H" y luces del borde (solo la plataforma de respaldo).
+local function dibujarBase(m: Model, cf: CFrame, R: number)
 	Kit.parte(
 		m,
 		cf * CFrame.new(0, 0.7, 0) * CFrame.Angles(0, 0, math.pi / 2),
@@ -115,6 +112,25 @@ local function helipuerto(rng: Random, indice: number, centro: Vector3, mirar: V
 			{ colision = false, consulta = false, sombra = false }
 		)
 	end
+end
+
+-- `base`: construir también el disco, los pilotes, la H y las luces (la plataforma importada
+-- ya trae sus helipuertos).
+local function helipuerto(
+	rng: Random,
+	indice: number,
+	centro: Vector3,
+	mirar: Vector3,
+	padre: Instance,
+	base: boolean
+): Portal
+	local m = Kit.modelo(("Vuelo%d"):format(indice), padre)
+	local cf = CFrame.lookAt(centro, Vector3.new(mirar.X, centro.Y, mirar.Z))
+	local R = L.RADIO_HELIPUERTO
+	if base then
+		dibujarBase(m, cf, R)
+	end
+
 	-- 4 lámparas de plaza ocupada, delante del helicóptero
 	local lamparas = {}
 	for k = 1, Config.MAX_POR_EQUIPO do
@@ -162,36 +178,58 @@ local function helipuerto(rng: Random, indice: number, centro: Vector3, mirar: V
 	}
 end
 
--- Hilera de bombillas colgando entre dos postes.
 function Lobby.construir(): Lobby
 	local rng = Random.new(20261113)
 	local carpeta = Instance.new("Folder")
 	carpeta.Name = "Lobby"
 	carpeta.Parent = workspace
 	local c = L.CENTRO
-	Plataforma.construir(c, carpeta)
 	local portales: { Portal } = {}
-	-- Dos alas laterales; los discos no se solapan y el radio de embarque queda
-	-- separado de la zona de llegada. El helicóptero conserva Interior, Rotor y Puerta.
-	for i = 1, L.VUELOS do
-		local x = if i <= 2 then -70 else 70
-		local z = if i % 2 == 1 then -28 else 28
-		local centro = c + Vector3.new(x, -1.4, z)
-		local entrada = c + Vector3.new(if x < 0 then -34 else 34, 0, z)
-		local borde = c + Vector3.new(if x < 0 then -55 else 55, 0, z)
-		Plataforma.pasarela(carpeta, entrada, borde)
-		table.insert(portales, helipuerto(rng, i, centro, c + Vector3.new(0, 0, z), carpeta))
+	local spawnCf: CFrame
+
+	local importada = Plataforma.importada(c, carpeta)
+	if importada then
+		for i = 1, L.VUELOS do
+			local centro = importada.helipuertos[i]
+			if centro then
+				-- el morro mira al centro de la plataforma
+				table.insert(portales, helipuerto(rng, i, centro - Vector3.yAxis * 1.4, c, carpeta, false))
+			end
+		end
+		spawnCf = importada.spawn
+		Mar.crear(c, carpeta, importada.punto, importada.studsPorMetro)
+	else
+		-- respaldo: la cubierta de partes queda 24 studs sobre el mar
+		local cubierta = c + Vector3.new(0, 24, 0)
+		Plataforma.construir(cubierta, carpeta)
+		-- Dos alas laterales; los discos no se solapan y el radio de embarque queda
+		-- separado de la zona de llegada. El helicóptero conserva Interior, Rotor y Puerta.
+		for i = 1, L.VUELOS do
+			local x = if i <= 2 then -70 else 70
+			local z = if i % 2 == 1 then -28 else 28
+			local centro = cubierta + Vector3.new(x, -1.4, z)
+			local entrada = cubierta + Vector3.new(if x < 0 then -34 else 34, 0, z)
+			local borde = cubierta + Vector3.new(if x < 0 then -55 else 55, 0, z)
+			Plataforma.pasarela(carpeta, entrada, borde)
+			table.insert(portales, helipuerto(rng, i, centro, cubierta + Vector3.new(0, 0, z), carpeta, true))
+		end
+		spawnCf = CFrame.lookAt(cubierta + Vector3.new(0, 1.5, 7), cubierta + Vector3.new(0, 1.5, -20))
+		Mar.crear(c, carpeta, nil, nil)
 	end
+
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "SpawnLobby"
 	spawn.Anchored = true
 	spawn.Size = Vector3.new(10, 1, 10)
-	spawn.CFrame = CFrame.lookAt(c + Vector3.new(0, 1.5, 7), c + Vector3.new(0, 1.5, -20))
+	spawn.CFrame = spawnCf
 	spawn.Transparency = 1
 	spawn.CanCollide = false
 	spawn.Neutral = true
 	spawn.Duration = 0
 	spawn.Parent = carpeta
+	Mar.rescatar(c, function()
+		return spawnCf + Vector3.yAxis * 3
+	end)
 	-- Sincroniza con ReplicatedFirst: la carga no termina a mitad de la construcción.
 	carpeta:SetAttribute("Listo", true)
 	return { carpeta = carpeta, spawn = spawn, portales = portales }

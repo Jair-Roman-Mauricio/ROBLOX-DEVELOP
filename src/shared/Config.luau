@@ -16,7 +16,9 @@ Config.MAX_POR_EQUIPO = 4
 Config.HELICOPTERO_MALLAS = false
 
 Config.Lobby = {
-	CENTRO = Vector3.new(0, 60, 6000), -- lejos del mapa para que nunca se vean
+	-- Centro de la plataforma a nivel del mar, lejos del mapa para que nunca se vean. Con la
+	-- plataforma importada la cubierta queda ~107 studs más arriba.
+	CENTRO = Vector3.new(0, 40, 6000),
 	VUELOS = 4,
 	CUENTA_ATRAS = 15, -- segundos desde que se acerca el primer jugador; al terminar despega aunque vaya uno solo
 	CUENTA_EQUIPO_LLENO = 5, -- segundos cuando el equipo ya es de 4
@@ -24,6 +26,35 @@ Config.Lobby = {
 	RADIO_EMBARQUE = 22, -- basta con estar a esta distancia del helicóptero
 	RADIO_LIMITE = 170,
 	CINEMATICA = 14.5, -- embarque épico (6.5 s) + despegue hasta perderse en el cielo (8 s)
+	-- Plataforma importada (art/export/Plataforma.glb, docs/PLATAFORMA.md). Las medidas del
+	-- modelo están en metros; 1 stud = 0,28 m.
+	Plataforma = {
+		STUDS_POR_METRO = 1 / 0.28,
+		ESCALA = 1, -- 1 = tamaño real (cubierta de 150 m, ~535 studs)
+		HELIPUERTOS = { "West", "NE", "East", "SE" }, -- uno por vuelo, en este orden
+		SEPARACION_HELIPUERTOS = 259, -- metros entre los helipuertos East y West
+		ALTURA_HELIPUERTOS = 32.4, -- metros sobre el mar de los helipuertos East y West
+		SPAWN = Vector3.new(-50, 8, 0), -- metros (x, y en el plano de la plataforma; la altura la da el suelo)
+		MIRAR = Vector3.new(0, 0, 0),
+		PATAS = { Vector2.new(55, 55), Vector2.new(-55, 55), Vector2.new(-55, -55), Vector2.new(55, -55) },
+		RADIO_PATA = 6, -- metros
+		VIENTO = 20, -- grados desde +X hacia donde van el viento y las olas
+		LUCES_MAX = 28, -- lámparas que además de brillar iluminan (las demás solo brillan)
+	},
+	-- Mar de tormenta: agua de terreno alrededor de la plataforma y un plano oscuro hasta el
+	-- horizonte, que la neblina tapa.
+	Mar = {
+		RADIO = 1536, -- studs de agua de terreno alrededor del centro
+		PROFUNDIDAD = 12,
+		HORIZONTE = 9000,
+		Agua = {
+			WaterColor = Color3.fromRGB(24, 54, 64),
+			WaterTransparency = 0.3,
+			WaterReflectance = 0.75,
+			WaterWaveSize = 1,
+			WaterWaveSpeed = 22,
+		},
+	},
 }
 
 -- Intro dentro del helicóptero: el piloto bromea, lo posee un espíritu y da 30 s para saltar.
@@ -88,7 +119,7 @@ Config.Audio = {
 	},
 	SILENCIO_SELVA = { 25, 70 },
 	Ambiente = {
-		Lobby = { id = 9112807589, volumen = 0.35 }, -- "Jungle Dusk 1"
+		Lobby = { id = 9126201834, volumen = 0.45 }, -- "Waves Long Rolling In Constantly Heavy Surf"
 		SelvaNoche = { id = 9112837538, volumen = 0.5 }, -- "Night Jungle 2"
 		Insectos = { id = 9112810388, volumen = 0.22 }, -- "Jungle Insects 3"
 		Rotor = { id = 9125390086, volumen = 0.32 }, -- Bell Huey, filtrado para sonar desde dentro
@@ -264,33 +295,36 @@ Config.Linterna = {
 -- Presets locales. Por petición del equipo, la selva apenas revela siluetas: la
 -- lectura del suelo depende de la linterna y de las luces locales de los lugares.
 Config.Iluminacion = {
-	-- receta "Golden hour" del baúl: sol bajo, sombras largas, arriba cálido y abajo violeta
+	-- tormenta en el mar del Norte (como los renders de la plataforma): cielo gris, luz fría,
+	-- neblina que se come el horizonte
 	Lobby = {
 		Lighting = {
-			ClockTime = 17.6,
+			ClockTime = 14.5,
 			GeographicLatitude = 30,
-			Brightness = 2.2,
-			Ambient = Color3.fromRGB(90, 70, 70),
-			OutdoorAmbient = Color3.fromRGB(130, 100, 90),
-			ColorShift_Top = Color3.fromRGB(255, 190, 120),
-			ColorShift_Bottom = Color3.fromRGB(60, 40, 80),
-			EnvironmentDiffuseScale = 0.4,
-			EnvironmentSpecularScale = 0.5,
-			ExposureCompensation = 0.1,
+			Brightness = 1.4,
+			Ambient = Color3.fromRGB(70, 78, 86),
+			OutdoorAmbient = Color3.fromRGB(110, 120, 130),
+			ColorShift_Top = Color3.fromRGB(200, 215, 230),
+			ColorShift_Bottom = Color3.fromRGB(40, 48, 58),
+			EnvironmentDiffuseScale = 0.6,
+			EnvironmentSpecularScale = 0.7,
+			ExposureCompensation = 0,
 		},
 		Atmosphere = {
-			Density = 0.35,
-			Offset = 0.2,
-			Color = Color3.fromRGB(255, 200, 160),
-			Decay = Color3.fromRGB(200, 120, 110),
-			Glare = 0.4,
-			Haze = 1.5,
+			Density = 0.42,
+			Offset = 0.1,
+			Color = Color3.fromRGB(170, 182, 192),
+			Decay = Color3.fromRGB(86, 97, 106),
+			Glare = 0,
+			Haze = 2.4,
 		},
-		Bloom = { Intensity = 0.7, Size = 32, Threshold = 1.1 },
-		Color = { Brightness = 0.02, Contrast = 0.1, Saturation = 0.1, TintColor = Color3.fromRGB(255, 245, 235) },
-		Rayos = { Intensity = 0.06, Spread = 0.6 },
-		Luciernagas = 20,
-		Niebla = 7,
+		Bloom = { Intensity = 0.5, Size = 28, Threshold = 1.2 },
+		Color = { Brightness = -0.02, Contrast = 0.12, Saturation = -0.3, TintColor = Color3.fromRGB(230, 238, 245) },
+		Rayos = { Intensity = 0, Spread = 0.6 },
+		Luciernagas = 0,
+		Niebla = 10,
+		Agua = Config.Lobby.Mar.Agua,
+		Nubes = { Cover = 0.9, Density = 0.75, Color = Color3.fromRGB(150, 158, 166) },
 	},
 	-- por encima de las nubes, último sol: cálido, poca niebla
 	Vuelo = {
@@ -374,6 +408,14 @@ Config.Iluminacion = {
 		Rayos = { Intensity = 0, Spread = 0.6 },
 		Luciernagas = 12,
 		Niebla = 4,
+		-- el río de la selva: casi quieto (mismos valores que Terreno.estilo)
+		Agua = {
+			WaterColor = Color3.fromRGB(34, 58, 52),
+			WaterTransparency = 0.55,
+			WaterReflectance = 0.6,
+			WaterWaveSize = 0.12,
+			WaterWaveSpeed = 6,
+		},
 	},
 }
 

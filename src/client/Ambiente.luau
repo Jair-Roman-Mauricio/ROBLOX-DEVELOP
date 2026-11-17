@@ -63,6 +63,9 @@ function Ambiente.iniciar()
 	local color = asegurar("ColorCorrectionEffect", "SelvaColor") :: ColorCorrectionEffect
 	local rayos = asegurar("SunRaysEffect", "SelvaRayos") :: SunRaysEffect
 	local cielo = asegurar("Sky") :: Sky
+	local nubes = workspace.Terrain:FindFirstChildOfClass("Clouds") or Instance.new("Clouds")
+	nubes.Cover = 0
+	nubes.Parent = workspace.Terrain
 	cielo.StarCount = 3000
 	cielo.MoonAngularSize = 14
 	cielo.SunAngularSize = 16
@@ -141,6 +144,12 @@ function Ambiente.iniciar()
 		ir(rayos, preset.Rayos)
 		luciernagas.Rate = preset.Luciernagas
 		niebla.Rate = preset.Niebla
+		-- el agua del terreno es una sola para todo el mundo: cada ambiente pone la suya (en
+		-- este cliente); las nubes solo existen donde el preset las pide
+		if preset.Agua then
+			ir(workspace.Terrain, preset.Agua)
+		end
+		ir(nubes, preset.Nubes or { Cover = 0 })
 	end
 
 	local function actualizar()
