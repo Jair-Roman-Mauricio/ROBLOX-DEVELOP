@@ -26,6 +26,7 @@ local Remotes = {
 	Cinematica = evento("Cinematica"), -- servidor → cliente: (helipuerto: Model) despegue
 	Intro = evento("Intro"), -- servidor → cliente: ("salto", destino, mirar) | ("choque")
 	Linterna = evento("Linterna"), -- cliente → servidor: (encender: boolean)
+	Serpiente = evento("Serpiente"), -- servidor → cliente: ("pasada", Pasada) | ("fin")
 	Estado = estado,
 }
 

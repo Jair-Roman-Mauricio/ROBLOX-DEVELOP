@@ -183,6 +183,62 @@ Config.Partida = {
 	},
 }
 
+-- Primer monstruo: una serpiente gigante que repta bajo la selva con árboles y rocas sobre el
+-- lomo. Por ahora solo se mueve, no ataca. La primera vez aparece con una cinemática; luego
+-- vuelve a pasar de vez en cuando. Abre el suelo a su paso y el terreno se regenera después.
+Config.Serpiente = {
+	ACTIVADA = true,
+	PRIMERA = { 45, 90 }, -- segundos desde que aterriza el primero hasta que tiembla
+	REPETIR = { 150, 260 }, -- pausa entre pasadas siguientes
+	AVISO = 6, -- segundos de temblor antes de que asome
+	VELOCIDAD = 34, -- studs por segundo
+	DISTANCIA = { 95, 130 }, -- a qué distancia del testigo abre la tierra la primera vez
+	RECORRIDO = 1500, -- studs de recorrido antes de volver a hundirse
+	RAMPA = 70, -- studs que tarda en subir desde lo hondo hasta asomar el lomo
+	HUNDIDO = 0.55, -- fracción del radio del cuerpo que va bajo el suelo
+	HUNDIDO_CABEZA = 1.1, -- la cabeza va más honda: no se la ve de frente
+	REGENERA = 50, -- segundos que tarda el suelo abierto en cerrarse
+	MARGEN_ZONA = 45, -- distancia mínima a pueblos, claro inicial, helicóptero y salida
+	MAX_ARRASTRADOS = 80, -- árboles, rocas y plantas que puede romper en una pasada
+	CRATER = 3.2, -- radio del cráter de entrada y de salida, en radios del cuerpo
+	LOMO = false, -- la vegetación que trae el modelo sobre el lomo (se ve mal al hundirse)
+	-- ProSoundEffects (biblioteca con licencia de Roblox)
+	Sonidos = {
+		Temblor = { id = 9112775181, volumen = 1 }, -- "Earthquake Rumble 2"
+		Derrumbe = { id = 9113218938, volumen = 0.9 }, -- "Avalanche Deep Crumbling 4"
+		Raices = { id = 9120818969, volumen = 0.6 }, -- "Wood Crack Busy Clunky Splintering 3"
+		Rocas = { id = 9125884445, volumen = 0.7 }, -- "Rocks Tumble Falling Down Cliff"
+		Rugido = { id = 9113980680, volumen = 0.7 }, -- "Creature Mix Giant Crab Monster Roar Growl 5"
+		Pajaros = { id = 9125738421, volumen = 0.8 }, -- "Pigeon Surges Sudden Bursts Of Birds Flying"
+		Infrasonido = { id = 9112795571, volumen = 1 }, -- "Hollow Rumble 2", tocado más grave
+		Presencia = { id = 9112775612, volumen = 0.7 }, -- "Eerie Presence 1"
+		Siseo = { id = 9119302978, volumen = 0.9 }, -- "Snake Hiss 2"
+	},
+	-- Cómo da miedo sin enseñarse (docs/SERPIENTE-MIEDO.md): se oye antes de verse, la selva se
+	-- calla, la linterna falla cerca de ella, asoma solo los ojos y te sigue con la mirada.
+	Miedo = {
+		SILENCIO = 1.5, -- segundos en que la selva se calla después de que huyan los pájaros
+		LINTERNA = 180, -- a menos de esta distancia la linterna parpadea
+		SISEO = { 6, 14 }, -- segundos entre siseos cuando está a menos de 140 studs
+		ASOMAR_CADA = 34, -- cada cuántos segundos asoma los ojos (no en la cinemática)
+		ASOMAR_DURA = 4,
+		-- valle inquietante: cada TIRON_CADA s se mueve unos segundos a pocos fotogramas
+		TIRON_CADA = 23,
+		TIRON_DURA = 2.2,
+		TIRON_FPS = 5,
+	},
+	-- filtro de miedo: cuanto más cerca está la serpiente, más se apaga el color de la pantalla
+	Filtro = {
+		DISTANCIA = 420,
+		SATURACION = -0.45,
+		CONTRASTE = 0.22,
+		TINTE = Color3.fromRGB(255, 220, 206),
+		SILUETA = Color3.fromRGB(120, 34, 18), -- borde casi invisible: se intuye, no se ve
+		SILUETA_TRANSPARENCIA = 0.88,
+		OJOS = Color3.fromRGB(214, 226, 70),
+	},
+}
+
 -- Linterna. PROVISIONAL: el inventario y las herramientas son una decisión abierta (CONTEXT.md).
 -- Cada superviviente recibe una al aterrizar; no gasta batería.
 Config.Linterna = {
@@ -310,6 +366,27 @@ Config.Iluminacion = {
 		Luciernagas = 12,
 		Niebla = 4,
 	},
+}
+
+-- Sensación de estar observado entre pasadas de la serpiente (docs/SERPIENTE-MIEDO.md). Empieza
+-- cuando termina la primera cinemática. Los intervalos son al azar a propósito: una amenaza
+-- impredecible mantiene la ansiedad, una predecible solo da un susto.
+Config.Acecho = {
+	ESPERA_INICIAL = 30, -- segundos tras la primera aparición antes del primer evento
+	ENTRE = { 5, 16 }, -- segundos al azar entre eventos
+	-- peso de cada evento al elegir el siguiente
+	Pesos = { Susurro = 4, Ojos = 3, Arbusto = 2, Rama = 2, Respiracion = 1 },
+	OJOS_DISTANCIA = { 35, 70 },
+	OJOS_ANGULO = { 38, 62 }, -- grados desde donde mira el jugador: en el borde de la vista
+	OJOS_MIRADA = 12, -- si el jugador los mira a menos de estos grados, desaparecen
+	OJOS_DURA = 7,
+	Sonidos = {
+		Susurros = { 9126213995, 9126214616, 9126213744 }, -- "Whisper Bursts Unintelligible ..."
+		Arbusto = { 9114518560, 9114515722, 9114518077 }, -- "Foliage Rustle", "Foliage Movement"
+		Rama = { 9113582284, 9113581977, 9113582139, 9120258724 }, -- "Branch Snap ..."
+		Respiracion = { 9113984056 }, -- "Creature Mix Weird Deep Monster Breathing 3"
+	},
+	VOLUMEN = { Susurro = 0.75, Arbusto = 0.9, Rama = 0.8, Respiracion = 0.45 },
 }
 
 return Config
