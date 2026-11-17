@@ -26,6 +26,16 @@ Objetivo principal: sobrevivir y escapar. Objetivo secundario: encontrar pueblos
 
 - Los pueblos son zonas protegidas. Al descubrirlos, el tiempo pasa al periodo diurno sin anomalías.
 
+- En la selva, la cámara permanece en primera persona y no debe girar, balancearse ni cambiar el zoom por sí sola durante la exploración.
+
+- La selva permanece casi completamente oscura: sin linterna apenas se distinguen las siluetas de la vegetación. La linterna es la única fuente de luz personal y alumbra un área limitada; las luces de edificios y lugares permanecen activas.
+
+- El lobby es una plataforma industrial de hierro/acero en medio del mar, con helipuertos para los vuelos a la selva.
+
+- Se aprueba usar los paquetes gratuitos de vegetación seleccionados de Creator Store, conservando la densidad de la selva y sus materiales.
+
+- Antes de entrar al lobby se muestra una pantalla de carga que prepara los recursos iniciales y el renderizado. La API de Roblox no permite comprobar que hayan terminado todos los shaders.
+
 ## Cómo interpretar este documento
 
 Las reglas anteriores vienen de las decisiones del equipo. Las medidas, distribución espacial y recomendaciones de las páginas siguientes son una propuesta de trabajo, no requisitos aprobados. No asumir que ideas antiguas de la lluvia de ideas siguen vigentes si contradicen estas reglas.

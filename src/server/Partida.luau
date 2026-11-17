@@ -21,7 +21,6 @@ local Generador = require(script.Parent.Mundo.Generador)
 local Intro = require(script.Parent.Intro)
 local Terreno = require(script.Parent.Mundo.Terreno)
 
-local P = Config.Partida
 local estado = Remotes.Estado
 
 local Partida = {}
@@ -41,6 +40,8 @@ local function quitar(pl: Player)
 	end
 	if pl.Parent then
 		pl:SetAttribute("Zona", "Lobby")
+		pl.CameraMode = Enum.CameraMode.Classic
+		pl.CameraMinZoomDistance = 0.5
 		pl.CameraMaxZoomDistance = 40
 	end
 end
@@ -106,8 +107,23 @@ local function terminar()
 end
 
 local function entrarSelva(pl: Player)
+	-- La linterna es la única luz personal: nadie aterriza sin una.
+	local botin = pl:FindFirstChild("Botin")
+	if not botin then
+		local nuevo = Instance.new("Folder")
+		nuevo.Name = "Botin"
+		nuevo.Parent = pl
+		botin = nuevo
+	end
+	if botin and not botin:FindFirstChild(Config.Linterna.OBJETO) then
+		local linterna = Instance.new("StringValue")
+		linterna.Name = Config.Linterna.OBJETO
+		linterna.Value = Config.Linterna.OBJETO
+		linterna.Parent = botin
+	end
 	pl:SetAttribute("Zona", "Partida")
-	pl.CameraMaxZoomDistance = P.ZOOM_MAXIMO
+	-- primera persona fija: el jugador no puede alejar la cámara
+	pl.CameraMode = Enum.CameraMode.LockFirstPerson
 	Remotes.Aviso:FireClient(pl, "Explora la selva. Busca los pueblos, el helicóptero y la salida.", 6)
 end
 

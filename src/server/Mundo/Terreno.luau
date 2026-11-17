@@ -6,7 +6,9 @@
 	06 World Building and Art/Terrain Tools and Terrain API).
 
 	Capas, en orden:
-	  1. colinas (fbm con distorsión) + borde montañoso + crestas de la salida
+	  1. relieve de selva baja (Config.Mapa.Relieve): llanura inundable, terrazas y colinas
+	     disecadas por quebradas, montañas y peñascos lejos de la ruta + borde montañoso +
+	     crestas de la salida + cochas
 	  2. mesetas de las zonas
 	  3. senderos con altura suavizada y pendiente limitada
 	  4. cauce y orillas del río
@@ -27,6 +29,7 @@ local AGUA = C.NIVEL_AGUA
 local ANCHO = C.ANCHO_CAMINO
 local RIO = C.ANCHO_RIO
 local ORILLA = C.ORILLA
+local R = C.Relieve
 local BLOQUE = 64 -- celdas por lado en cada escritura
 
 local M = Enum.Material
@@ -36,6 +39,7 @@ export type Datos = {
 	materiales: { Enum.Material },
 	distCamino: { number },
 	distRio: { number },
+	distCocha: { number },
 	altura: (x: number, z: number) -> number,
 	distanciaCamino: (x: number, z: number) -> number,
 	distanciaRio: (x: number, z: number) -> number,
@@ -87,13 +91,98 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 	local ox, oz = rng:NextNumber(-2000, 2000), rng:NextNumber(-2000, 2000)
 	local crestas = disp.crestas
 
+	local total = N * N
+	local distRio = table.create(total, math.huge)
+	estampar(distRio, nil, disp.rio, nil, RIO + ORILLA + R.VALLE_RIO)
+
+	-- Distancia a la ruta (senderos y zonas): las montañas y los peñascos solo se levantan lejos
+	-- de ella, así los senderos corren por los valles y no tienen que cortar un macizo.
+	local distRuta = table.create(total, math.huge)
+	do
+		local puntos: { Vector2 } = {}
+		for _, cam in disp.caminos do
+			for j = 1, #cam.puntos, 4 do
+				table.insert(puntos, cam.puntos[j])
+			end
+		end
+		estampar(distRuta, nil, puntos, nil, R.MONTE_LEJOS + 16)
+	end
+	local function lejosDeRuta(x: number, z: number): number
+		local d = distRuta[indice(celdaDe(x), celdaDe(z))]
+		for _, zona in disp.zonas do
+			local dx, dz = x - zona.pos.X, z - zona.pos.Y
+			d = math.min(d, math.sqrt(dx * dx + dz * dz) - zona.radio)
+		end
+		return Ruido.suave(R.MONTE_CERCA, R.MONTE_LEJOS, d)
+	end
+
+	-- Quebradas: 0 en el eje del cauce y crece hacia las lomas. Los ceros de un ruido fractal
+	-- forman líneas que se ramifican, parecidas a una red de drenaje; una segunda red más fina
+	-- hace de afluentes, menos hondos.
+	local function quebrada(wx: number, wz: number): number
+		local f = R.F_QUEBRADA
+		local principal = math.abs(Ruido.fbm(wx * f + 91.3, wz * f - 37.1, 3, ox, oz)) * 2
+		local afluente = math.abs(Ruido.fbm(wx * f * 2.6 + 7.1, wz * f * 2.6 + 57.9, 2, oz, ox)) * 2 + 0.14
+		return math.min(principal, afluente)
+	end
+
+	local function distorsion(x: number, z: number): (number, number)
+		-- distorsión de dominio: formas menos redondas (baúl: Domain warping)
+		return x + Ruido.fbm(x * 0.003 + 11.3, z * 0.003, 2, ox, oz) * 90,
+			z + Ruido.fbm(x * 0.003, z * 0.003 + 7.7, 2, oz, ox) * 90
+	end
+
+	-- Relieve de selva baja amazónica, ordenado por el drenaje (ver docs/TOPOGRAFIA-SELVA.md):
+	--   llanura inundable junto al río, con restinga (dique natural) y bajial detrás
+	--   terrazas escalonadas que suben al alejarse del río
+	--   colinas disecadas por quebradas: fondo plano y húmedo, ladera corta y cima redondeada
 	local function base(x: number, z: number): number
-		-- distorsión de dominio: colinas menos redondas (baúl: Domain warping)
-		local wx = x + Ruido.fbm(x * 0.003 + 11.3, z * 0.003, 2, ox, oz) * 90
-		local wz = z + Ruido.fbm(x * 0.003, z * 0.003 + 7.7, 2, oz, ox) * 90
-		local h = math.max(C.ALTURA_BASE + Ruido.fbm(wx * 0.0042, wz * 0.0042, 5, ox, oz) * 55, AGUA + 3)
-		local e = math.max(math.abs(x), math.abs(z)) / MITAD
-		h += Ruido.suave(0.78, 0.97, e) * (100 + 45 * Ruido.fbm(x * 0.01, z * 0.01, 2, oz, ox))
+		local wx, wz = distorsion(x, z)
+		local piso = AGUA + 3
+		local dr = distRio[indice(celdaDe(x), celdaDe(z))]
+		-- 0 en la llanura inundable, 1 en tierra firme
+		local firme = Ruido.suave(RIO + ORILLA * 0.5, RIO + ORILLA + R.VALLE_RIO, dr)
+
+		local g = math.clamp(0.5 + Ruido.fbm(wx * 0.0024, wz * 0.0024, 4, ox, oz) * 1.15, 0, 1) * firme
+		local e = g * R.TERRAZAS
+		local peldano = math.floor(e)
+		local escalon = (peldano + Ruido.suave(0.5 - R.TALUD, 0.5 + R.TALUD, e - peldano)) / R.TERRAZAS
+		g += (escalon - g) * R.ESCALON
+		local h = piso + g * R.GRANDE
+
+		-- unas partes onduladas (lomadas) y otras quebradas (colinas), para que no se repita
+		local quebrado = Ruido.suave(-0.3, 0.25, Ruido.fbm(x * 0.0021 + 31.7, z * 0.0021 + 5.1, 2, oz, ox))
+		local v = quebrada(wx, wz)
+		local ladera = Ruido.suave(R.FONDO, R.FONDO + R.LADERA, v)
+		local cima = Ruido.suave(R.FONDO + R.LADERA, 1.1, v)
+		local desnivel = R.COLINAS * (0.3 + 0.7 * quebrado) * (0.25 + 0.75 * g) * firme
+		h += desnivel * (ladera * (1 + 0.35 * cima) - 0.45)
+		h = math.max(h, piso - 1 + ladera)
+
+		-- Montañas de selva alta: macizos de paredes casi verticales y cumbre en meseta con filos,
+		-- y peñascos sueltos (torres de roca) entre ellos.
+		local libre = lejosDeRuta(x, z) * firme
+		if libre > 0 then
+			local macizo = Ruido.fbm(wx * R.F_MONTE + 40.2, wz * R.F_MONTE - 12.8, 4, oz, ox)
+			local pared = Ruido.suave(R.MONTE_UMBRAL, R.MONTE_UMBRAL + 0.09, macizo)
+			if pared > 0 then
+				local cumbre = Ruido.suave(R.MONTE_UMBRAL + 0.05, 0.45, macizo)
+				local filo = 1 - math.min(1, math.abs(Ruido.fbm(wx * 0.0052 + 3.3, wz * 0.0052 + 9.4, 3, ox, oz)) * 2.4)
+				h += libre * pared * (R.MONTE_BASE + R.MONTE_CUMBRE * cumbre * (0.5 + 0.5 * filo))
+			end
+			local torre = Ruido.suave(0.27, 0.33, Ruido.fbm(x * 0.0105 + 5.5, z * 0.0105 + 70.1, 2, ox, oz))
+			if torre > 0 then
+				h += libre * torre * R.PENASCO * (0.65 + 0.7 * math.abs(Ruido.fbm(x * 0.004, z * 0.004, 1, oz, ox)))
+			end
+		end
+
+		local b = dr - (RIO + ORILLA)
+		if b > -6 and b < 70 then
+			h += R.RESTINGA * math.exp(-((b - 8) / 7) ^ 2) - 1.2 * math.exp(-((b - 36) / 13) ^ 2)
+		end
+
+		local borde = math.max(math.abs(x), math.abs(z)) / MITAD
+		h += Ruido.suave(0.8, 0.97, borde) * (100 + 45 * Ruido.fbm(x * 0.01, z * 0.01, 2, oz, ox))
 		for _, c in crestas do
 			local dx, dz = x - c.X, z - c.Y
 			h += 72 * math.exp(-(dx * dx + dz * dz) / (2 * 36 * 36))
@@ -101,8 +190,62 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 		return h
 	end
 
+	-- Cochas: meandros abandonados en la llanura inundable, con forma de herradura abierta
+	-- hacia el río. Solo donde no pisan senderos ni zonas.
+	local distCocha = table.create(total, math.huge)
+	do
+		local hechas, intentos = 0, 0
+		local radio = R.COCHA_RADIO
+		while hechas < R.COCHAS and intentos < 40 do
+			intentos += 1
+			local k = rng:NextInteger(2, #disp.rio - 1)
+			local p = disp.rio[k]
+			local dir = (disp.rio[k + 1] - disp.rio[k - 1])
+			if dir.Magnitude == 0 then
+				continue
+			end
+			local normal = Vector2.new(-dir.Y, dir.X).Unit * (if rng:NextNumber() < 0.5 then -1 else 1)
+			local c = p + normal * (RIO + ORILLA + radio + rng:NextNumber(12, 26))
+			local hacia = math.atan2(-normal.Y, -normal.X) -- ángulo que mira al río
+			local arco: { Vector2 } = {}
+			local valido = true
+			for a = hacia + 0.9, hacia + math.pi * 2 - 0.9, 3 / radio do
+				local q = c + Vector2.new(math.cos(a), math.sin(a)) * radio
+				if math.max(math.abs(q.X), math.abs(q.Y)) > MITAD * 0.74 then
+					valido = false
+					break
+				end
+				if distRio[indice(celdaDe(q.X), celdaDe(q.Y))] < RIO + ORILLA + 10 then
+					valido = false
+					break
+				end
+				for _, zona in disp.zonas do
+					if (q - zona.pos).Magnitude < zona.radio + 40 then
+						valido = false
+					end
+				end
+				for _, cam in disp.caminos do
+					for j = 1, #cam.puntos, 3 do
+						if (q - cam.puntos[j]).Magnitude < ANCHO + 44 then
+							valido = false
+							break
+						end
+					end
+				end
+				if not valido then
+					break
+				end
+				table.insert(arco, q)
+			end
+			if valido and distCocha[indice(celdaDe(c.X), celdaDe(c.Y))] > radio * 3 then
+				estampar(distCocha, nil, arco, nil, 18)
+				hechas += 1
+			end
+		end
+	end
+
 	for _, zona in disp.zonas do
-		local h = math.clamp(base(zona.pos.X, zona.pos.Y), AGUA + 6, 58)
+		local h = math.clamp(base(zona.pos.X, zona.pos.Y), AGUA + 6, R.TOPE_ZONA)
 		zona.altura = if zona.tipo == "salida" then h + 14 else h
 	end
 
@@ -116,10 +259,6 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 		end
 		return h
 	end
-
-	local total = N * N
-	local distRio = table.create(total, math.huge)
-	estampar(distRio, nil, disp.rio, nil, RIO + ORILLA + 60)
 
 	-- alturas de los senderos: siguen el terreno suavizado, bajan poco a poco hasta la orilla
 	-- antes de cruzar el río y nunca superan PENDIENTE_CAMINO entre muestras. Los limitadores
@@ -162,7 +301,7 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 	local distCamino = table.create(total, math.huge)
 	local alturaCamino = table.create(total, 0)
 	for _, cam in disp.caminos do
-		estampar(distCamino, alturaCamino, cam.puntos, cam.alturas, ANCHO + 14)
+		estampar(distCamino, alturaCamino, cam.puntos, cam.alturas, ANCHO + 22)
 	end
 
 	local alturas = table.create(total, 0)
@@ -175,12 +314,12 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 			local h = conZonas(x, z, h0)
 			-- relieve fino fuera de las mesetas
 			if math.abs(h - h0) < 0.5 then
-				h += Ruido.fbm(x * 0.05, z * 0.05, 2, oz, ox) * 1.6
+				h += Ruido.fbm(x * 0.05, z * 0.05, 2, oz, ox) * R.FINO
 			end
 			local dc = distCamino[i]
 			local wc = 0
-			if dc < ANCHO + 12 then
-				wc = 1 - Ruido.suave(ANCHO, ANCHO + 12, dc)
+			if dc < ANCHO + 20 then
+				wc = 1 - Ruido.suave(ANCHO, ANCHO + 20, dc)
 				h += (alturaCamino[i] - h) * wc
 			end
 			local dr = distRio[i]
@@ -194,6 +333,11 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 					local talud = math.min(h, fondo + (h - fondo) * Ruido.suave(RIO, RIO + ORILLA, dr))
 					h = talud + (h - talud) * wc
 				end
+			end
+			local dk = distCocha[i]
+			if dk < 15 then
+				local lecho = AGUA - 0.6 - 3.2 * (1 - math.min(1, dk / 7) ^ 2)
+				h = math.min(h, lecho + (h - lecho) * Ruido.suave(6, 15, dk))
 			end
 			alturas[i] = h
 		end
@@ -215,7 +359,9 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 			local ruido = math.noise(x * 0.03 + ox, z * 0.03 + oz, 1.7)
 			local azar = Ruido.azar(ix, iz, semilla)
 			local mat: Enum.Material
-			if h < AGUA + 0.5 and dr < RIO + ORILLA then
+			if distCocha[i] < 17 then
+				mat = M.Mud
+			elseif h < AGUA + 0.5 and dr < RIO + ORILLA then
 				mat = if ruido > 0.15 then M.Ground else M.Mud
 			elseif dr < RIO + ORILLA + 3 then
 				mat = if azar < 0.6 then M.Mud else M.LeafyGrass
@@ -245,10 +391,16 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 					end
 				elseif pend > 1.15 then
 					mat = M.Rock
-				elseif h > 100 then
+				elseif h > 100 and pend > 0.45 then
 					mat = if ruido > 0 then M.Rock else M.Slate
 				elseif pend > 0.7 then
 					mat = if ruido > 0 then M.Ground else M.Rock
+				elseif quebrada(distorsion(x, z)) < R.FONDO * 0.9 and h < 70 then
+					-- fondo de quebrada: suelo encharcado
+					mat = if azar < 0.7 then M.Mud else M.LeafyGrass
+				elseif dr > RIO + ORILLA + 24 and dr < RIO + ORILLA + 52 and h < AGUA + 6 then
+					-- bajial detrás de la restinga
+					mat = if ruido > -0.1 then M.Mud else M.LeafyGrass
 				else
 					local manchas = Ruido.fbm(x * 0.012, z * 0.012, 2, ox, oz)
 					mat = if manchas > 0.22 then M.Grass elseif manchas < -0.28 then M.Mud else M.LeafyGrass
@@ -264,6 +416,7 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 		materiales = materiales,
 		distCamino = distCamino,
 		distRio = distRio,
+		distCocha = distCocha,
 		-- interpolación bilineal entre centros de celda
 		altura = function(x: number, z: number): number
 			local fx = math.clamp((x + MITAD) / CELDA + 0.5, 1, N)
@@ -286,7 +439,7 @@ end
 
 function Terreno.escribir(datos: Datos, progreso: (number) -> ())
 	local terreno = workspace.Terrain
-	local alturas, materiales, distRio = datos.alturas, datos.materiales, datos.distRio
+	local alturas, materiales, distRio, distCocha = datos.alturas, datos.materiales, datos.distRio, datos.distCocha
 	local bloques = N // BLOQUE
 	local hechos = 0
 	for bx = 0, bloques - 1 do
@@ -298,7 +451,7 @@ function Terreno.escribir(datos: Datos, progreso: (number) -> ())
 					local i = indice(ix, iz)
 					hmin = math.min(hmin, alturas[i])
 					hmax = math.max(hmax, alturas[i])
-					agua = agua or distRio[i] < RIO + ORILLA + 8
+					agua = agua or distRio[i] < RIO + ORILLA + 8 or distCocha[i] < 16
 				end
 			end
 			local y0 = math.floor((hmin - 16) / CELDA) * CELDA
@@ -317,7 +470,7 @@ function Terreno.escribir(datos: Datos, progreso: (number) -> ())
 				for lz = 1, BLOQUE do
 					local i = indice(ix0 + lx - 1, iz0 + lz - 1)
 					local h, mat = alturas[i], materiales[i]
-					local mojado = distRio[i] < RIO + ORILLA + 8
+					local mojado = distRio[i] < RIO + ORILLA + 8 or distCocha[i] < 16
 					for ly = 1, ny do
 						local fondo = y0 + (ly - 1) * CELDA
 						local occ = (h - fondo) / CELDA
@@ -372,7 +525,7 @@ function Terreno.limpiar()
 	local paso = BLOQUE * CELDA
 	for x = -MITAD, MITAD - 1, paso do
 		for z = -MITAD, MITAD - 1, paso do
-			terreno:FillBlock(CFrame.new(x + paso / 2, 130, z + paso / 2), Vector3.new(paso, 420, paso), M.Air)
+			terreno:FillBlock(CFrame.new(x + paso / 2, 300, z + paso / 2), Vector3.new(paso, 760, paso), M.Air)
 		end
 		task.wait()
 	end

@@ -15,6 +15,8 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Catalogo = require(script.Parent.Parent.Modelos.CatalogoVegetacion)
+
 local Config = require(ReplicatedStorage.Shared.Config)
 local Disposicion = require(script.Parent.Disposicion)
 local Dispersion = require(script.Parent.Dispersion)
@@ -91,25 +93,33 @@ local function limites(padre: Instance)
 	local carpeta = Instance.new("Folder")
 	carpeta.Name = "Limites"
 	carpeta.Parent = padre
+	-- cada lado va en tramos: una parte no puede medir más de 2048 studs
 	local m = C.TAMANO / 2
-	for _, d in
-		{
-			{ Vector3.new(m, 150, 0), Vector3.new(4, 600, C.TAMANO) },
-			{ Vector3.new(-m, 150, 0), Vector3.new(4, 600, C.TAMANO) },
-			{ Vector3.new(0, 150, m), Vector3.new(C.TAMANO, 600, 4) },
-			{ Vector3.new(0, 150, -m), Vector3.new(C.TAMANO, 600, 4) },
-		}
-	do
-		Kit.parte(carpeta, CFrame.new(d[1]), d[2], Color3.new(), Enum.Material.SmoothPlastic, {
-			transparencia = 1,
-			sombra = false,
-			consulta = false,
-			nombre = "Pared",
-		})
+	local tramos = math.ceil(C.TAMANO / 1024)
+	local largo = C.TAMANO / tramos
+	for k = 1, tramos do
+		local o = -m + (k - 0.5) * largo
+		for _, d in
+			{
+				{ Vector3.new(m, 300, o), Vector3.new(4, 900, largo) },
+				{ Vector3.new(-m, 300, o), Vector3.new(4, 900, largo) },
+				{ Vector3.new(o, 300, m), Vector3.new(largo, 900, 4) },
+				{ Vector3.new(o, 300, -m), Vector3.new(largo, 900, 4) },
+			}
+		do
+			Kit.parte(carpeta, CFrame.new(d[1]), d[2], Color3.new(), Enum.Material.SmoothPlastic, {
+				transparencia = 1,
+				sombra = false,
+				consulta = false,
+				nombre = "Pared",
+			})
+		end
 	end
 end
 
 function Generador.generar(semilla: number, padre: Instance, progreso: (number, string) -> ()): Mundo
+	progreso(0, "Cargando vegetación de Creator Store")
+	Catalogo.preparar()
 	progreso(0, "Trazando la selva")
 	local disp: Disposicion.Disposicion? = nil
 	local datos: Terreno.Datos? = nil

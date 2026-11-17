@@ -16,7 +16,7 @@ Config.MAX_POR_EQUIPO = 4
 Config.HELICOPTERO_MALLAS = false
 
 Config.Lobby = {
-	CENTRO = Vector3.new(0, 60, 1700), -- lejos del mapa para que nunca se vean
+	CENTRO = Vector3.new(0, 60, 6000), -- lejos del mapa para que nunca se vean
 	VUELOS = 4,
 	CUENTA_ATRAS = 15, -- segundos desde que se acerca el primer jugador; al terminar despega aunque vaya uno solo
 	CUENTA_EQUIPO_LLENO = 5, -- segundos cuando el equipo ya es de 4
@@ -111,10 +111,35 @@ Config.Audio = {
 }
 
 Config.Mapa = {
-	TAMANO = 1536, -- studs por lado (~430 m). CONTEXT.md propone 1.000 m: pendiente de pruebas de rendimiento
+	TAMANO = 2304, -- studs por lado (~645 m; múltiplo de 256). CONTEXT.md propone 1.000 m: pendiente de pruebas de rendimiento
 	CELDA = 4, -- tamaño de vóxel del terreno
 	NIVEL_AGUA = 16, -- múltiplo de CELDA para que la superficie del agua quede plana
-	ALTURA_BASE = 30,
+	-- Relieve de selva baja amazónica, en studs (docs/TOPOGRAFIA-SELVA.md). Los senderos siguen
+	-- respetando PENDIENTE_CAMINO (cortan las lomas), así que la ruta sigue siendo caminable.
+	Relieve = {
+		VALLE_RIO = 170, -- ancho de la llanura inundable y de la subida a tierra firme
+		RESTINGA = 3, -- altura del dique natural junto a la orilla
+		GRANDE = 46, -- desnivel entre la llanura y la terraza más alta
+		TERRAZAS = 3, -- número de escalones
+		ESCALON = 0.75, -- 0 = rampa continua, 1 = terrazas planas con talud
+		TALUD = 0.18, -- medio ancho del talud entre terrazas (fracción del escalón)
+		COLINAS = 40, -- desnivel máximo entre el fondo de una quebrada y la cima
+		F_QUEBRADA = 0.0046, -- frecuencia de la red de quebradas (más alto = más juntas)
+		FONDO = 0.1, -- ancho del fondo plano de la quebrada
+		LADERA = 0.5, -- ancho de la ladera
+		FINO = 2.2, -- irregularidad a ras de suelo
+		-- montañas: macizos de paredes casi verticales, solo lejos de senderos y zonas
+		F_MONTE = 0.0017, -- frecuencia de los macizos (más bajo = macizos más grandes)
+		MONTE_UMBRAL = 0.06, -- más bajo = más superficie montañosa
+		MONTE_BASE = 150, -- altura de la pared
+		MONTE_CUMBRE = 190, -- altura extra hasta la cumbre
+		MONTE_CERCA = 40, -- a esta distancia de la ruta empieza a levantarse
+		MONTE_LEJOS = 170, -- y a esta ya tiene toda su altura
+		PENASCO = 75, -- altura de las torres de roca sueltas
+		COCHAS = 2, -- lagunas de meandro abandonado
+		COCHA_RADIO = 30,
+		TOPE_ZONA = 80, -- altura máxima de la meseta de una zona
+	},
 	ANCHO_CAMINO = 7, -- medio ancho del sendero
 	ANCHO_RIO = 16, -- medio ancho del cauce
 	ORILLA = 14,
@@ -124,22 +149,55 @@ Config.Mapa = {
 	ATAJOS = { 2, 3 }, -- caminos extra además de la ruta A-B-C-D-E-F
 	ESPEJO_ALEATORIO = true, -- refleja el mapa este-oeste en la mitad de las semillas
 	Vegetacion = {
-		ARBOLES = 520,
-		HELECHOS = 1100,
-		ARBUSTOS = 450,
-		HOJAS_GRANDES = 280,
-		ROCAS = 160,
-		TRONCOS = 45,
+		CEIBAS = 0.03, -- ceibas de referencia: raíces tablares y silueta original
+		-- alturas en studs (1 stud ≈ 0,28 m): dosel real de 30 a 45 m, emergentes de 50 a 60 m
+		ALTO_CEIBA = { 150, 210 },
+		ALTO_ARBOL = { 62, 118 },
+		ALTO_PALMERA = { 34, 62 },
+		ALTO_SECO = { 40, 70 },
+		ARBOLES = 990,
+		HELECHOS = 2090,
+		ARBUSTOS = 860,
+		HOJAS_GRANDES = 530,
+		ROCAS = 180, -- total, contando los peñascos (~120 partes cada roca)
+		ROCAS_GRANDES = 30, -- peñascos con árboles (~540 partes cada uno)
+		TRONCOS = 90,
+	},
+}
+
+-- IDs aprobados: nunca cargar un asset proporcionado por un cliente.
+Config.VegetacionStore = {
+	ACTIVADO = true,
+	PAQUETES = {
+		{ id = 6432306802, nombre = "Forest Pack - Roblox", oficial = true },
+		{ id = 5678316277, nombre = "Realistic Jungle Foliage - vx0rn", oficial = false },
+		{ id = 12157426374, nombre = "Tropical Jungle Island - PSY0PZ", oficial = false },
 	},
 }
 
 Config.Partida = {
-	ZOOM_MAXIMO = 18,
+	-- Primera persona estable: tensión por encuadre y periferia, sin movimiento artificial.
+	Camara = {
+		FOV = 70,
+		VINETA = 0.26,
+	},
 }
 
--- Presets de iluminación que aplica cada cliente. Base: receta "Readable night" del baúl
--- (07 Lighting VFX and Audio/Stylized Lighting Recipes): la noche se marca con tono azul y
--- menos saturación, no con oscuridad. Debe verse una silueta a 50 studs.
+-- Linterna. PROVISIONAL: el inventario y las herramientas son una decisión abierta (CONTEXT.md).
+-- Cada superviviente recibe una al aterrizar; no gasta batería.
+Config.Linterna = {
+	OBJETO = "Linterna",
+	TECLA = Enum.KeyCode.F,
+	BOTON_MANDO = Enum.KeyCode.ButtonY,
+	ALCANCE = 120, -- studs (máximo del motor: 120)
+	ANGULO = 58,
+	BRILLO = 6,
+	COLOR = Color3.fromRGB(255, 240, 214),
+	ESPERA = 0.25, -- segundos mínimos entre pulsaciones (lo valida el servidor)
+}
+
+-- Presets locales. Por petición del equipo, la selva apenas revela siluetas: la
+-- lectura del suelo depende de la linterna y de las luces locales de los lugares.
 Config.Iluminacion = {
 	-- receta "Golden hour" del baúl: sol bajo, sombras largas, arriba cálido y abajo violeta
 	Lobby = {
@@ -224,31 +282,33 @@ Config.Iluminacion = {
 		Luciernagas = 0,
 		Niebla = 0,
 	},
+	-- Selva: oscuridad casi total; solo siluetas sin linterna. Las luces locales de
+	-- edificios y antorchas siguen iluminando porque no se modifica ninguna de ellas.
 	Noche = {
 		Lighting = {
-			ClockTime = 21.8,
-			Brightness = 0.9,
-			Ambient = Color3.fromRGB(52, 66, 92),
-			OutdoorAmbient = Color3.fromRGB(80, 100, 130),
-			ColorShift_Top = Color3.fromRGB(150, 175, 255),
-			ColorShift_Bottom = Color3.fromRGB(20, 30, 45),
-			EnvironmentDiffuseScale = 0.25,
-			EnvironmentSpecularScale = 0.3,
-			ExposureCompensation = 0.3,
+			ClockTime = 0,
+			Brightness = 0,
+			Ambient = Color3.fromRGB(3, 4, 6),
+			OutdoorAmbient = Color3.fromRGB(5, 7, 10),
+			ColorShift_Top = Color3.new(0, 0, 0),
+			ColorShift_Bottom = Color3.new(0, 0, 0),
+			EnvironmentDiffuseScale = 0.02,
+			EnvironmentSpecularScale = 0.08,
+			ExposureCompensation = -0.35,
 		},
 		Atmosphere = {
-			Density = 0.36,
+			Density = 0.38,
 			Offset = 0.05,
-			Color = Color3.fromRGB(62, 86, 104),
-			Decay = Color3.fromRGB(26, 40, 54),
+			Color = Color3.fromRGB(12, 18, 26),
+			Decay = Color3.fromRGB(3, 5, 9),
 			Glare = 0,
-			Haze = 1.4,
+			Haze = 1.6,
 		},
-		Bloom = { Intensity = 0.8, Size = 30, Threshold = 0.95 },
-		Color = { Brightness = 0, Contrast = 0.12, Saturation = -0.12, TintColor = Color3.fromRGB(214, 232, 240) },
+		Bloom = { Intensity = 0.15, Size = 18, Threshold = 1.8 },
+		Color = { Brightness = 0, Contrast = 0.14, Saturation = -0.25, TintColor = Color3.fromRGB(230, 237, 250) },
 		Rayos = { Intensity = 0, Spread = 0.6 },
-		Luciernagas = 24,
-		Niebla = 6,
+		Luciernagas = 12,
+		Niebla = 4,
 	},
 }
 
