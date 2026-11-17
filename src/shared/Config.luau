@@ -149,7 +149,6 @@ Config.Mapa = {
 	ATAJOS = { 2, 3 }, -- caminos extra además de la ruta A-B-C-D-E-F
 	ESPEJO_ALEATORIO = true, -- refleja el mapa este-oeste en la mitad de las semillas
 	Vegetacion = {
-		CEIBAS = 0.03, -- ceibas de referencia: raíces tablares y silueta original
 		-- alturas en studs (1 stud ≈ 0,28 m): dosel real de 30 a 45 m, emergentes de 50 a 60 m
 		ALTO_CEIBA = { 150, 210 },
 		ALTO_ARBOL = { 62, 118 },
@@ -162,6 +161,16 @@ Config.Mapa = {
 		ROCAS = 180, -- total, contando los peñascos (~120 partes cada roca)
 		ROCAS_GRANDES = 30, -- peñascos con árboles (~540 partes cada uno)
 		TRONCOS = 90,
+		-- Estructura (docs/SELVA-ECOTOPOS.md): cada punto pertenece a un ecotopo y la vegetación
+		-- se siembra por capas, las bajas alrededor de las altas.
+		RIBERA = 42, -- studs desde la orilla que cuentan como ribera
+		LADERA = 0.42, -- pendiente (desnivel / distancia) a partir de la cual es ladera
+		CLAROS = 16, -- claros abiertos por la caída de un árbol
+		CLARO_RADIO = { 16, 30 },
+		ESPACIO = { selva = 19, ribera = 14, ladera = 30 }, -- distancia mínima entre árboles del dosel
+		CORREDOR = 30, -- cada cuántos studs un árbol enmarca el sendero (alternando lados)
+		HITO_SENDERO = 280, -- cada cuántos studs de sendero hay una ceiba emergente a la vista
+		HITO_ESPACIO = 150, -- distancia mínima entre ceibas
 	},
 }
 
