@@ -72,7 +72,7 @@ local function trazar(rng: Random, mundo: Generador.Mundo, inicio: Vector2, rumb
 			end
 		end
 		-- el río: lo cruza si hace falta, pero no lo sigue
-		if datos.distanciaRio(p.X, p.Y) < MAPA.ANCHO_RIO + 30 then
+		if datos.distanciaAgua(p.X, p.Y) < 30 then
 			empuje += dir * 0.5
 		end
 		if empuje.Magnitude > 0.01 then
@@ -107,7 +107,7 @@ local function salida(rng: Random, mundo: Generador.Mundo, testigo: Player): (Ve
 				valido = false
 			end
 		end
-		if valido and mundo.datos.distanciaRio(p.X, p.Y) > MAPA.ANCHO_RIO + 12 then
+		if valido and mundo.datos.distanciaAgua(p.X, p.Y) > 12 then
 			-- cruza de lado delante del testigo: perpendicular a la línea de visión
 			local frente = (p - yo).Unit
 			local lado = Vector2.new(-frente.Y, frente.X) * (if rng:NextNumber() < 0.5 then 1 else -1)

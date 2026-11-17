@@ -27,7 +27,8 @@ local function punto(cf: CFrame, x: number, y: number, z: number): Vector3
 end
 
 -- Choza sobre pilotes (palafito) con techo de paja a dos aguas. Algunas tablas faltan.
-function Estructuras.choza(rng: Random, cf: CFrame, padre: Instance): Model
+-- `hundida`: el techo se vino abajo por el centro y la paja cayó dentro.
+function Estructuras.choza(rng: Random, cf: CFrame, padre: Instance, hundida: boolean?): Model
 	local m = Kit.modelo("Choza", padre)
 	local W, D = rng:NextNumber(12, 16), rng:NextNumber(10, 13)
 	local piso = rng:NextNumber(3.5, 5.5)
@@ -117,7 +118,23 @@ function Estructuras.choza(rng: Random, cf: CFrame, padre: Instance): Model
 	for _, lado in { -1, 1 } do
 		for t = 0, 2 do
 			k += 1
-			if k ~= tramoRoto then
+			if hundida and t == 1 then
+				-- el tramo central cayó dentro de la choza, inclinado sobre el piso
+				Kit.parte(
+					m,
+					cf
+						* CFrame.new(rng:NextNumber(-1, 1), piso + 2.2, lado * D / 6)
+						* CFrame.Angles(
+							lado * rng:NextNumber(0.6, 0.9),
+							rng:NextNumber(-0.3, 0.3),
+							rng:NextNumber(-0.2, 0.2)
+						),
+					Vector3.new(anchoTramo, 0.6, largo * 0.8),
+					Kit.variar(paja, rng, 0.06),
+					M.Grass,
+					Kit.FOLLAJE
+				)
+			elseif k ~= tramoRoto then
 				local x = -(W + 2.4) / 2 + anchoTramo * (t + 0.5)
 				Kit.parte(
 					m,
@@ -131,14 +148,28 @@ function Estructuras.choza(rng: Random, cf: CFrame, padre: Instance): Model
 			end
 		end
 	end
-	Kit.cilindro(
-		m,
-		punto(cf, -W / 2 - 1.2, tope + subida, 0),
-		punto(cf, W / 2 + 1.2, tope + subida, 0),
-		0.6,
-		madera,
-		M.Wood
-	)
+	if hundida then
+		-- la viga del caballete partida en dos, cada mitad cae hacia el centro
+		for _, s in { -1, 1 } do
+			Kit.cilindro(
+				m,
+				punto(cf, s * (W / 2 + 1.2), tope + subida, 0),
+				punto(cf, s * 0.6, tope + subida * 0.25, rng:NextNumber(-0.8, 0.8)),
+				0.6,
+				madera,
+				M.Wood
+			)
+		end
+	else
+		Kit.cilindro(
+			m,
+			punto(cf, -W / 2 - 1.2, tope + subida, 0),
+			punto(cf, W / 2 + 1.2, tope + subida, 0),
+			0.6,
+			madera,
+			M.Wood
+		)
+	end
 
 	-- escalones hasta la puerta
 	local n = math.max(2, math.ceil(piso / 1.1))
@@ -426,6 +457,57 @@ function Estructuras.puente(rng: Random, desde: Vector3, hasta: Vector3, nivelAg
 			end
 			topes[clave] = tope
 		end
+	end
+	return m
+end
+
+-- Tronco caído de orilla a orilla sobre un arroyo, con musgo, ramas rotas y el cepellón de
+-- raíces en un extremo. Una tabla invisible encima hace que se camine sin resbalar.
+function Estructuras.troncoPuente(rng: Random, desde: Vector3, hasta: Vector3, padre: Instance): Model
+	local m = Kit.modelo("TroncoPuente", padre)
+	local dir = Vector3.new(hasta.X - desde.X, 0, hasta.Z - desde.Z).Unit
+	local a = desde - dir * 5 + Vector3.yAxis * 1.2
+	local b = hasta + dir * 5 + Vector3.yAxis * 1.2
+	local d = rng:NextNumber(3.4, 4.2)
+	local corteza = Kit.variar(Color3.fromRGB(78, 62, 44), rng, 0.05)
+	Kit.cilindro(m, a, b, d, corteza, M.Wood)
+	Kit.viga(m, a + Vector3.yAxis * (d / 2 - 0.2), b + Vector3.yAxis * (d / 2 - 0.2), 2.6, 0.4, corteza, M.Wood, {
+		transparencia = 1,
+		sombra = false,
+		nombre = "Paso",
+	})
+	local largo = (b - a).Magnitude
+	for _ = 1, math.floor(largo / 5) do
+		local p = a:Lerp(b, rng:NextNumber(0.1, 0.9))
+		Kit.parte(
+			m,
+			CFrame.lookAt(p, p + (b - a)) * CFrame.new(rng:NextNumber(-0.6, 0.6), d / 2 - 0.1, 0),
+			Vector3.new(rng:NextNumber(1.4, 2.6), 0.3, rng:NextNumber(2, 4)),
+			Kit.variar(Color3.fromRGB(79, 107, 42), rng, 0.05),
+			M.Grass,
+			Kit.FOLLAJE
+		)
+	end
+	for _ = 1, 3 do
+		local p = a:Lerp(b, rng:NextNumber(0.15, 0.85))
+		local lado = Vector3.new(-dir.Z, 0, dir.X) * Kit.elegir(rng, { -1, 1 })
+		Kit.cilindro(
+			m,
+			p,
+			p + lado * rng:NextNumber(2, 4) + Vector3.new(0, rng:NextNumber(-1, 2), 0),
+			0.5,
+			corteza,
+			M.Wood,
+			Kit.FOLLAJE
+		)
+	end
+	-- cepellón de raíces arrancado
+	local raiz = Kit.elegir(rng, { a, b })
+	local fuera = (raiz - (a + b) / 2).Unit
+	for k = 0, 7 do
+		local ang = k / 8 * math.pi * 2
+		local q = raiz + fuera * 1.5 + Vector3.new(math.cos(ang), math.sin(ang), 0) * d * 0.9
+		Kit.cilindro(m, raiz, q, 0.6, Kit.variar(Color3.fromRGB(58, 42, 27), rng, 0.05), M.Wood, Kit.FOLLAJE)
 	end
 	return m
 end

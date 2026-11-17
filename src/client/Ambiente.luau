@@ -152,12 +152,22 @@ function Ambiente.iniciar()
 		ir(nubes, preset.Nubes or { Cover = 0 })
 	end
 
+	-- la selva es de noche salvo que Config.Mapa.DIA o el atributo SelvaDia de Workspace digan
+	-- lo contrario (el atributo manda si existe)
+	local function selva(): string
+		local dia = workspace:GetAttribute("SelvaDia")
+		if dia == nil then
+			dia = Config.Mapa.DIA
+		end
+		return if dia == true then "Dia" else "Noche"
+	end
+
 	local function actualizar()
 		local zona = jugador:GetAttribute("Zona")
 		if zona == "Partida" then
-			aplicar("Noche", 0)
+			aplicar(selva(), 0)
 		elseif zona == "Saltando" then
-			aplicar("Noche", 3)
+			aplicar(selva(), 3)
 		elseif zona == "Helicoptero" then
 			aplicar("Vuelo", 0)
 		elseif zona == "Lobby" then
@@ -166,6 +176,7 @@ function Ambiente.iniciar()
 	end
 	aplicarPreset = aplicar
 	jugador:GetAttributeChangedSignal("Zona"):Connect(actualizar)
+	workspace:GetAttributeChangedSignal("SelvaDia"):Connect(actualizar)
 	aplicar("Lobby", 0)
 	actualizar()
 end

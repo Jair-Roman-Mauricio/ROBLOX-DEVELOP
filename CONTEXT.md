@@ -60,6 +60,18 @@ Recomendación técnica: generar primero un grafo de zonas conectadas; colocar i
 
 Variar recorridos, relieve, vegetación, suministros y puntos de interés. Conservar reglas de progresión. El ejemplo visual adjunto representa una semilla ilustrativa, no un mapa fijo obligatorio.
 
+## Aspecto de la selva (aprobado el 17 de noviembre de 2026)
+
+Aprobado por el usuario a partir del plano «Selva: culto a la serpiente». Detalle en docs/SELVA-CULTO.md.
+
+- Un culto antiguo a una serpiente une el mapa: cinco santuarios junto a los senderos, un altar en cada pueblo y un templo escalonado (zona T, conectada con la salida) que se ve sobre el dosel.
+- Los altares de los pueblos eran de protección: los habitantes huían de la serpiente, no la servían.
+- Agua: el río principal con rápidos, un lago-pantano junto a la aldea de palafitos, un lago alimentado por una cascada en el borde y de uno a tres arroyos. Los cruces cortos se hacen por troncos caídos.
+- Tres estilos de pueblo abandonado con prisa: ladera (B), palafitos (D) y ruinas (E).
+- Ecotopos nuevos: pantano muerto, santuario y borde tupido.
+- Atmósfera: niebla baja en agua y valles, niebla espesa en el templo, haces de luna, hongos tenues como guía, arañazos, mudas de serpiente y un rastro de ofrendas hacia el templo.
+- Preset de día (bruma verde) elegible con el atributo SelvaDia; la noche sigue siendo la predeterminada.
+
 ## Decisiones todavía abiertas
 
 - Duración objetivo, ritmo del día y la noche, y momento exacto de aparición de anomalías.

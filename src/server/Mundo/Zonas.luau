@@ -1,12 +1,16 @@
 --!strict
 --[[
 	Contenido de cada zona del mapa: claro inicial (A), pueblos fantasma (B, D, E),
-	helicóptero estrellado (C) y paso de salida (F).
+	helicóptero estrellado (C), paso de salida (F) y templo de la serpiente (T).
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Aldea = require(script.Parent.Parent.Modelos.Aldea)
+local Atmosfera = require(script.Parent.Parent.Modelos.Atmosfera)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Culto = require(script.Parent.Parent.Modelos.Culto)
+local Disposicion = require(script.Parent.Disposicion)
 local Estructuras = require(script.Parent.Parent.Modelos.Estructuras)
 local Helicoptero = require(script.Parent.Parent.Modelos.Helicoptero)
 local Kit = require(script.Parent.Parent.Modelos.Kit)
@@ -26,52 +30,169 @@ local function sobreCamino(datos: Terreno.Datos, x: number, z: number, margen: n
 	return datos.distanciaCamino(x, z) < C.ANCHO_CAMINO + margen
 end
 
-function Zonas.pueblo(rng: Random, centro: Vector3, radio: number, datos: Terreno.Datos, padre: Instance): Model
+-- Pueblo fantasma. Los tres comparten lo de siempre (antorchas, vallas y los tótems que marcan
+-- la zona protegida) y cada uno cuenta su historia según `zona.estilo` (docs/SELVA-CULTO.md):
+--   ladera     chozas de paja hundidas, cercas podridas, hamacas, vasijas volcadas, lianas
+--   palafitos  chozas sobre el lago negro con pasarelas caídas y alguna medio hundida
+--   ruinas     pozo de piedra en la plaza empedrada y sala de reuniones en ruinas
+-- Todas se abandonaron a toda prisa: enseres tirados, puertas rotas, nada vivo. El altar de
+-- cada una era para mantener lejos a la serpiente.
+function Zonas.pueblo(
+	rng: Random,
+	centro: Vector3,
+	zona: Disposicion.Zona,
+	datos: Terreno.Datos,
+	padre: Instance,
+	lago: Disposicion.Lago?
+): Model
+	local radio = zona.radio
+	local estilo = zona.estilo or "ladera"
 	local m = Kit.modelo("Pueblo", padre)
-	Estructuras.maloca(
-		rng,
-		CFrame.new(suelo(datos, centro.X, centro.Z)) * CFrame.Angles(0, rng:NextNumber(0, 6.28), 0),
-		m
-	)
+	m:SetAttribute("Estilo", estilo)
 
-	local n = rng:NextInteger(5, 7)
-	local a0 = rng:NextNumber(0, math.pi * 2)
-	for i = 1, n do
-		for _ = 1, 6 do
-			local a = a0 + i / n * math.pi * 2 + rng:NextNumber(-0.3, 0.3)
-			local r = rng:NextNumber(30, radio - 14)
-			local x, z = centro.X + math.cos(a) * r, centro.Z + math.sin(a) * r
-			if not sobreCamino(datos, x, z, 10) then
+	-- sitios ocupados, para que nada se monte encima de otra cosa
+	local ocupado: { { p: Vector2, r: number } } = {}
+	local function libreEn(x: number, z: number, r: number): boolean
+		if sobreCamino(datos, x, z, r * 0.6 + 3) then
+			return false
+		end
+		if lago and (Vector2.new(x, z) - lago.centro).Magnitude < lago.radio + r + 2 then
+			return false
+		end
+		for _, o in ocupado do
+			if (o.p - Vector2.new(x, z)).Magnitude < o.r + r then
+				return false
+			end
+		end
+		return true
+	end
+	local function ocupar(p: Vector3, r: number)
+		table.insert(ocupado, { p = Vector2.new(p.X, p.Z), r = r })
+	end
+	local function buscar(rMin: number, rMax: number, r: number): Vector3?
+		for _ = 1, 24 do
+			local a = rng:NextNumber(0, math.pi * 2)
+			local d = rng:NextNumber(rMin, math.max(rMin, rMax))
+			local x, z = centro.X + math.cos(a) * d, centro.Z + math.sin(a) * d
+			if libreEn(x, z, r) then
 				local p = suelo(datos, x, z)
-				local cf = CFrame.lookAt(p, Vector3.new(centro.X, p.Y, centro.Z))
-				Estructuras.choza(rng, cf, m)
-				Estructuras.antorcha(
-					rng,
-					CFrame.new(suelo(datos, (cf * CFrame.new(5.5, 0, -9)).X, (cf * CFrame.new(5.5, 0, -9)).Z)),
-					m
-				)
+				ocupar(p, r)
+				return p
+			end
+		end
+		return nil
+	end
+	local function mirandoAlCentro(p: Vector3): CFrame
+		return CFrame.lookAt(p, Vector3.new(centro.X, p.Y, centro.Z))
+	end
+
+	-- el centro: maloca, o pozo con la sala de reuniones en las ruinas
+	if estilo == "ruinas" then
+		local p = suelo(datos, centro.X, centro.Z)
+		Aldea.pozo(rng, CFrame.new(p) * CFrame.Angles(0, rng:NextNumber(0, 6.28), 0), m)
+		ocupar(p, 8)
+		local sala = buscar(30, radio - 20, 18)
+		if sala then
+			Aldea.sala(rng, mirandoAlCentro(sala), m)
+		end
+	else
+		local p = suelo(datos, centro.X, centro.Z)
+		Estructuras.maloca(rng, CFrame.new(p) * CFrame.Angles(0, rng:NextNumber(0, 6.28), 0), m)
+		ocupar(p, 13)
+	end
+
+	-- altar de protección mirando al centro
+	local altar = buscar(24, radio - 18, 12)
+	if altar then
+		Culto.altar(rng, mirandoAlCentro(altar), m)
+	end
+
+	-- viviendas
+	for _ = 1, rng:NextInteger(5, 7) do
+		local p = buscar(30, radio - 14, 9)
+		if p then
+			local cf = mirandoAlCentro(p)
+			if estilo == "ruinas" and rng:NextNumber() < 0.5 then
+				Aldea.ruina(rng, cf, m)
+			else
+				local hundida = rng:NextNumber()
+					< (if estilo == "ladera" then 0.5 elseif estilo == "ruinas" then 0.6 else 0.25)
+				Estructuras.choza(rng, cf, m, hundida)
 				if rng:NextNumber() < 0.6 then
-					local q = cf * CFrame.new(rng:NextNumber(-9, 9), 0, rng:NextNumber(4, 9))
-					Estructuras.pilaCajas(rng, CFrame.new(suelo(datos, q.X, q.Z)), m)
+					Aldea.puertaRota(rng, cf * CFrame.new(0, 0, -9), m)
 				end
-				break
+				if estilo == "ladera" and rng:NextNumber() < 0.75 then
+					Aldea.lianas(rng, p + Vector3.yAxis * 13, p.Y, m)
+				end
+			end
+			local q = cf * CFrame.new(5.5, 0, -9)
+			Estructuras.antorcha(rng, CFrame.new(suelo(datos, q.X, q.Z)), m)
+		end
+	end
+
+	-- hamacas en la aldea de ladera
+	if estilo == "ladera" then
+		for _ = 1, 3 do
+			local p = buscar(18, radio - 10, 5)
+			if p then
+				local giro = CFrame.new(p) * CFrame.Angles(0, rng:NextNumber(0, 6.28), 0)
+				local a, b = (giro * CFrame.new(-3.4, 0, 0)).Position, (giro * CFrame.new(3.4, 0, 0)).Position
+				Aldea.hamaca(rng, suelo(datos, a.X, a.Z), suelo(datos, b.X, b.Z), m)
 			end
 		end
 	end
 
-	-- antorchas alrededor de la maloca y restos de la vida del pueblo
-	for i = 1, 4 do
-		local a = i / 4 * math.pi * 2 + 0.4
-		Estructuras.antorcha(rng, CFrame.new(suelo(datos, centro.X + math.cos(a) * 18, centro.Z + math.sin(a) * 18)), m)
-	end
-	for _ = 1, 2 do
-		local a = rng:NextNumber(0, math.pi * 2)
-		local p = suelo(datos, centro.X + math.cos(a) * 22, centro.Z + math.sin(a) * 22)
-		Estructuras.troncosApilados(rng, CFrame.new(p) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), m)
+	-- lo que dejaron al huir
+	for _ = 1, 6 do
+		local p = buscar(10, radio - 6, 3)
+		if p then
+			Aldea.enseres(rng, CFrame.new(p), m)
+		end
 	end
 
-	-- vallas rotas en tramos del perímetro, sin cortar senderos
-	for _ = 1, 3 do
+	-- palafitos sobre el lago negro, del lado de la aldea, con pasarelas hasta la orilla
+	if lago then
+		local base = math.atan2(lago.fuera.Y, lago.fuera.X)
+		local n = 4
+		for k = 0, n - 1 do
+			local a = base + (k - (n - 1) / 2) * 0.55
+			local dir = Vector2.new(math.cos(a), math.sin(a))
+			local pos = lago.centro + dir * math.max(10, lago.radio - 22)
+			local frente = Vector3.new(dir.X, 0, dir.Y)
+			local agua = Vector3.new(pos.X, lago.nivel, pos.Y)
+			local lecho = datos.altura(pos.X, pos.Y)
+			Aldea.palafito(rng, CFrame.lookAt(agua, agua + frente), lecho, m, k == 1 or rng:NextNumber() < 0.2)
+			local orilla = lago.centro + dir * (lago.radio + 3)
+			local desde = Vector3.new(orilla.X, lago.nivel + 2.5, orilla.Y)
+			local hasta = agua + frente * 12 + Vector3.yAxis * 2.5
+			Aldea.pasarela(rng, desde, hasta, lago.nivel - 6, m, k % 2 == 1)
+		end
+		Atmosfera.sonido(
+			m,
+			Vector3.new(lago.centro.X, lago.nivel + 2, lago.centro.Y),
+			Config.Mapa.Agua.Sonidos.Pantano,
+			30,
+			260
+		)
+	end
+
+	-- antorchas alrededor del centro y leña apilada
+	for i = 1, 4 do
+		local a = i / 4 * math.pi * 2 + 0.4
+		local x, z = centro.X + math.cos(a) * 18, centro.Z + math.sin(a) * 18
+		if libreEn(x, z, 1) then
+			Estructuras.antorcha(rng, CFrame.new(suelo(datos, x, z)), m)
+		end
+	end
+	for _ = 1, 2 do
+		local p = buscar(16, 26, 4)
+		if p then
+			Estructuras.troncosApilados(rng, CFrame.new(p) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), m)
+		end
+	end
+
+	-- vallas rotas (podridas en la ladera) en tramos del perímetro, sin cortar senderos
+	for _ = 1, if estilo == "ladera" then 5 else 3 do
 		local a = rng:NextNumber(0, math.pi * 2)
 		local desde = suelo(datos, centro.X + math.cos(a) * (radio - 6), centro.Z + math.sin(a) * (radio - 6))
 		local b = a + rng:NextNumber(0.25, 0.45)
@@ -91,7 +212,10 @@ function Zonas.pueblo(rng: Random, centro: Vector3, radio: number, datos: Terren
 	for i = 1, totems do
 		local a = i / totems * math.pi * 2
 		local x, z = centro.X + math.cos(a) * radio, centro.Z + math.sin(a) * radio
-		if not sobreCamino(datos, x, z, 3) then
+		if
+			not sobreCamino(datos, x, z, 3)
+			and not (lago and (Vector2.new(x, z) - lago.centro).Magnitude < lago.radio + 3)
+		then
 			local p = suelo(datos, x, z)
 			Estructuras.totem(
 				rng,
@@ -99,6 +223,21 @@ function Zonas.pueblo(rng: Random, centro: Vector3, radio: number, datos: Terren
 				m
 			)
 		end
+	end
+	return m
+end
+
+-- Templo de la Serpiente: la escalera mira hacia `hacia` (por donde llega el sendero) y una
+-- niebla espesa lo envuelve.
+function Zonas.templo(rng: Random, centro: Vector3, hacia: Vector2, datos: Terreno.Datos, padre: Instance): Model
+	local m = Kit.modelo("Templo", padre)
+	local p = suelo(datos, centro.X, centro.Z)
+	local dir = Vector3.new(hacia.X, 0, hacia.Y).Unit
+	Culto.templo(rng, CFrame.lookAt(p, p + dir), m)
+	Atmosfera.niebla(m, p + dir * 70, 70, true)
+	for k = 1, 4 do
+		local a = k / 4 * math.pi * 2 + 0.6
+		Atmosfera.niebla(m, suelo(datos, p.X + math.cos(a) * 80, p.Z + math.sin(a) * 80), 60, true)
 	end
 	return m
 end

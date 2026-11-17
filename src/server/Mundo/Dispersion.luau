@@ -2,8 +2,11 @@
 --[[
 	Reparte la vegetación con una estructura, no al azar (docs/SELVA-ECOTOPOS.md).
 
-	1. Ecotopos: cada punto del mapa es ribera (junto al río), claro (hueco que dejó un árbol
-	   caído), ladera (pendiente fuerte) o selva. Cada uno tiene sus especies y su densidad.
+	1. Ecotopos: cada punto del mapa es ribera (junto al río, un lago o un arroyo), claro (hueco
+	   que dejó un árbol caído), ladera (pendiente fuerte) o selva. Cada uno tiene sus especies
+	   y su densidad. Con el culto (docs/SELVA-CULTO.md) se suman el pantano (todo muerto
+	   alrededor del lago negro), el santuario (asfixiante alrededor del templo) y el borde
+	   (muro de selva que cierra el mapa).
 	2. Capas, de arriba abajo, y cada capa se apoya en la anterior:
 	     hitos      ceibas emergentes junto a cada zona y a lo largo de los senderos
 	     dosel      árboles con distancia mínima (como un muestreo de disco de Poisson), y
@@ -28,7 +31,8 @@ local V = C.Vegetacion
 local MITAD = C.TAMANO / 2
 
 type Creador = (Random, Vector3, Instance) -> Model
-type Ecotopo = "ribera" | "claro" | "ladera" | "selva"
+type Ecotopo = "ribera" | "claro" | "ladera" | "selva" | "pantano" | "santuario" | "borde"
+export type Claro = { pos: Vector2, radio: number }
 
 -- Huella de cada clase: radio libre alrededor (studs) y pendiente máxima del suelo bajo ella
 -- (desnivel / distancia). Las plantas pequeñas pueden ir pegadas a troncos, no encima.
@@ -95,7 +99,7 @@ function Dispersion.poblar(
 	datos: Terreno.Datos,
 	padre: Instance,
 	progreso: (number) -> ()
-)
+): { Claro }
 	local ox, oz = rng:NextNumber(-500, 500), rng:NextNumber(-500, 500)
 	local lim = MITAD - 20
 
@@ -115,8 +119,13 @@ function Dispersion.poblar(
 		if datos.distanciaCamino(x, z) < C.ANCHO_CAMINO + margenCamino then
 			return false
 		end
-		if datos.distanciaRio(x, z) < C.ANCHO_RIO + 3 then
+		if datos.distanciaAgua(x, z) < 3 then
 			return false
+		end
+		for _, r in disp.reservas do
+			if (Vector2.new(x, z) - r.pos).Magnitude < r.radio then
+				return false
+			end
 		end
 		return not enZona(x, z, margenZona)
 	end
@@ -135,7 +144,6 @@ function Dispersion.poblar(
 	---------------------------------------------------------------------------------------------
 	-- Claros: huecos del dosel que deja un árbol al caer. Lejos de senderos, zonas y río.
 	---------------------------------------------------------------------------------------------
-	type Claro = { pos: Vector2, radio: number }
 	local claros: { Claro } = {}
 	do
 		local intentos = 0
@@ -144,7 +152,7 @@ function Dispersion.poblar(
 			local p = Vector2.new(rng:NextNumber(-lim, lim), rng:NextNumber(-lim, lim))
 			local r = rng:NextNumber(V.CLARO_RADIO[1], V.CLARO_RADIO[2])
 			local lejos = libre(p.X, p.Y, r + 12, r + 20)
-				and datos.distanciaRio(p.X, p.Y) > C.ANCHO_RIO + V.RIBERA + r
+				and datos.distanciaAgua(p.X, p.Y) > V.RIBERA + r
 				and pendiente(p.X, p.Y) < V.LADERA
 			if lejos then
 				for _, c in claros do
@@ -169,11 +177,26 @@ function Dispersion.poblar(
 		return nil
 	end
 
+	local pantano: Disposicion.Lago? = nil
+	for _, l in disp.lagos do
+		if l.tipo == "pantano" then
+			pantano = l
+		end
+	end
+	local templo = disp.porId.T
+
 	local function ecotopo(x: number, z: number): Ecotopo
-		if datos.distanciaRio(x, z) < C.ANCHO_RIO + V.RIBERA then
+		local p = Vector2.new(x, z)
+		if pantano and (p - pantano.centro).Magnitude < pantano.radio + V.PANTANO then
+			return "pantano"
+		elseif datos.distanciaAgua(x, z) < V.RIBERA then
 			return "ribera"
 		elseif claroEn(x, z) then
 			return "claro"
+		elseif templo and (p - templo.pos).Magnitude < templo.radio + V.SANTUARIO then
+			return "santuario"
+		elseif math.max(math.abs(x), math.abs(z)) > MITAD * V.BORDE then
+			return "borde"
 		elseif pendiente(x, z) > V.LADERA then
 			return "ladera"
 		end
@@ -184,7 +207,14 @@ function Dispersion.poblar(
 	-- Colocar
 	---------------------------------------------------------------------------------------------
 	local colocados = 0
-	local total = V.ARBOLES + V.HELECHOS + V.ARBUSTOS + V.HOJAS_GRANDES + V.ROCAS + V.TRONCOS
+	local total = V.ARBOLES
+		+ V.ARBOLES_BORDE
+		+ V.ARBOLES_SANTUARIO
+		+ V.HELECHOS
+		+ V.ARBUSTOS
+		+ V.HOJAS_GRANDES
+		+ V.ROCAS
+		+ V.TRONCOS
 
 	-- huellas físicas (nada se atraviesa) y espaciado del dosel (copas que no se pisan)
 	local fisico = rejilla(24, RADIO_MAX)
@@ -327,11 +357,23 @@ function Dispersion.poblar(
 			return nil
 		end
 		local espacio = (V.ESPACIO :: any)[eco] :: number
-		if not dosel.libre(x, z, espacio / 2) or rng:NextNumber() > densidad(x, z) + 0.15 then
+		-- el borde y el santuario no tienen arboledas más claras: son un muro
+		local tupido = eco == "borde" or eco == "santuario"
+		if not dosel.libre(x, z, espacio / 2) or (not tupido and rng:NextNumber() > densidad(x, z) + 0.15) then
 			return nil
 		end
 		local r = rng:NextNumber()
-		if eco == "ribera" then
+		if eco == "pantano" then
+			-- todo muerto y gris alrededor del lago negro
+			return enDosel(Vegetacion.seco, espacio), HUELLAS.palmera, "Arboles"
+		elseif tupido then
+			if r < 0.75 then
+				return enDosel(Vegetacion.arbol, espacio), HUELLAS.arbol, "Arboles"
+			elseif r < 0.9 then
+				return enDosel(Vegetacion.palmera, espacio), HUELLAS.palmera, "Arboles"
+			end
+			return enDosel(Vegetacion.seco, espacio), HUELLAS.palmera, "Arboles"
+		elseif eco == "ribera" then
 			if r < 0.7 then
 				return enDosel(Vegetacion.palmera, espacio), HUELLAS.palmera, "Arboles"
 			end
@@ -419,6 +461,39 @@ function Dispersion.poblar(
 	end
 	arbolesHechos += sembrar(V.ARBOLES - arbolesHechos, alAzar, arbolDe, 11, -4, arboles)
 
+	-- muro de selva en el borde no jugable y espesura alrededor del templo
+	sembrar(V.ARBOLES_BORDE, function(): Vector2?
+		local p = alAzar() :: Vector2
+		if math.max(math.abs(p.X), math.abs(p.Y)) < MITAD * V.BORDE then
+			return nil
+		end
+		return p
+	end, arbolDe, 11, -4, arboles)
+	if templo then
+		sembrar(
+			V.ARBOLES_SANTUARIO,
+			alrededor({ templo.pos }, templo.radio + 4, templo.radio + V.SANTUARIO),
+			arbolDe,
+			11,
+			-4,
+			arboles
+		)
+	end
+
+	-- árboles secos de pie dentro del lago negro, con el pie bajo el agua
+	if pantano then
+		local muertos = carpeta("ArbolesMuertos")
+		for _ = 1, V.MUERTOS_EN_LAGO do
+			local a = rng:NextNumber(0, math.pi * 2)
+			local p = pantano.centro
+				+ Vector2.new(math.cos(a), math.sin(a)) * pantano.radio * rng:NextNumber(0.15, 0.85)
+			if fisico.libre(p.X, p.Y, 4) then
+				Vegetacion.seco(rng, Vector3.new(p.X, datos.altura(p.X, p.Y), p.Y), muertos)
+				fisico.ocupar(p.X, p.Y, 4)
+			end
+		end
+	end
+
 	---------------------------------------------------------------------------------------------
 	-- 3. Rocas: peñascos donde el suelo se empina y grupos de una grande con varias pequeñas.
 	---------------------------------------------------------------------------------------------
@@ -495,7 +570,8 @@ function Dispersion.poblar(
 	sembrar(math.floor(a * 0.3), borde(2, 10, true), arbusto, 1.5, -12)
 	sembrar(math.floor(a * 0.15), alrededor(bordesClaros, 0, 6), arbusto, 2, -10)
 	sembrar(a - math.floor(a * 0.35) - math.floor(a * 0.3) - math.floor(a * 0.15), alAzar, function(x, z)
-		if ecotopo(x, z) == "claro" or rng:NextNumber() > densidad(x, z) then
+		local eco = ecotopo(x, z)
+		if eco == "claro" or eco == "pantano" or rng:NextNumber() > densidad(x, z) then
 			return nil
 		end
 		return Vegetacion.arbusto, HUELLAS.arbusto, "Arbustos"
@@ -543,6 +619,7 @@ function Dispersion.poblar(
 	-- para depurar: la carpeta guarda dónde quedaron los claros
 	padre:SetAttribute("Claros", #claros)
 	progreso(1)
+	return claros
 end
 
 return Dispersion
