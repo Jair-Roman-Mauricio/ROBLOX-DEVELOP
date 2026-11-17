@@ -42,6 +42,9 @@ export type Mundo = {
 	zonas: { ZonaMundo },
 	spawns: { Vector3 },
 	mirarInicio: Vector3,
+	-- alturas del terreno tal como se generó y el grafo de zonas (los usa la serpiente)
+	datos: Terreno.Datos,
+	disposicion: Disposicion.Disposicion,
 }
 
 type Puente = { desde: Vector3, hasta: Vector3 }
@@ -214,6 +217,8 @@ function Generador.generar(semilla: number, padre: Instance, progreso: (number, 
 		zonas = zonas,
 		spawns = spawns,
 		mirarInicio = mirar,
+		datos = datos,
+		disposicion = disp,
 	}
 end
 

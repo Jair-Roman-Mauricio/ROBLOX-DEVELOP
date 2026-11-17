@@ -183,6 +183,42 @@ Config.Partida = {
 	},
 }
 
+-- Primer monstruo: una serpiente gigante que repta bajo la selva con árboles y rocas sobre el
+-- lomo. Por ahora solo se mueve, no ataca. La primera vez aparece con una cinemática; luego
+-- vuelve a pasar de vez en cuando. Abre el suelo a su paso y el terreno se regenera después.
+Config.Serpiente = {
+	ACTIVADA = true,
+	PRIMERA = { 45, 90 }, -- segundos desde que aterriza el primero hasta que tiembla
+	REPETIR = { 150, 260 }, -- pausa entre pasadas siguientes
+	AVISO = 6, -- segundos de temblor antes de que asome
+	VELOCIDAD = 34, -- studs por segundo
+	DISTANCIA = { 95, 130 }, -- a qué distancia del testigo abre la tierra la primera vez
+	RECORRIDO = 1500, -- studs de recorrido antes de volver a hundirse
+	RAMPA = 70, -- studs que tarda en subir desde lo hondo hasta asomar el lomo
+	HUNDIDO = 0.55, -- fracción del radio del cuerpo que va bajo el suelo
+	HUNDIDO_CABEZA = 1.1, -- la cabeza va más honda: no se la ve de frente
+	REGENERA = 50, -- segundos que tarda el suelo abierto en cerrarse
+	MARGEN_ZONA = 45, -- distancia mínima a pueblos, claro inicial, helicóptero y salida
+	MAX_ARRASTRADOS = 60, -- árboles, rocas y plantas que puede llevar encima a la vez
+	-- ProSoundEffects (biblioteca con licencia de Roblox)
+	Sonidos = {
+		Temblor = { id = 9112775181, volumen = 1 }, -- "Earthquake Rumble 2"
+		Derrumbe = { id = 9113218938, volumen = 0.9 }, -- "Avalanche Deep Crumbling 4"
+		Raices = { id = 9120818969, volumen = 0.6 }, -- "Wood Crack Busy Clunky Splintering 3"
+		Rocas = { id = 9125884445, volumen = 0.7 }, -- "Rocks Tumble Falling Down Cliff"
+		Rugido = { id = 9113980680, volumen = 0.7 }, -- "Creature Mix Giant Crab Monster Roar Growl 5"
+	},
+	-- filtro de miedo: cuanto más cerca está la serpiente, más se apaga el color de la pantalla
+	Filtro = {
+		DISTANCIA = 420,
+		SATURACION = -0.45,
+		CONTRASTE = 0.22,
+		TINTE = Color3.fromRGB(255, 220, 206),
+		SILUETA = Color3.fromRGB(120, 34, 18), -- borde que la recorta en la oscuridad
+		OJOS = Color3.fromRGB(214, 226, 70),
+	},
+}
+
 -- Linterna. PROVISIONAL: el inventario y las herramientas son una decisión abierta (CONTEXT.md).
 -- Cada superviviente recibe una al aterrizar; no gasta batería.
 Config.Linterna = {

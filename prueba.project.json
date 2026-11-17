@@ -24,7 +24,8 @@
     },
     "Workspace": {
       "$attributes": {
-        "SelvaProcedural": true
+        "SelvaProcedural": true,
+        "SerpienteRapida": true
       }
     },
     "Lighting": {

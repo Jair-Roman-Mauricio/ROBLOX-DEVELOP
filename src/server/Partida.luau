@@ -19,6 +19,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(script.Parent.Remotes)
 local Generador = require(script.Parent.Mundo.Generador)
 local Intro = require(script.Parent.Intro)
+local Serpiente = require(script.Parent.Monstruos.Serpiente)
 local Terreno = require(script.Parent.Mundo.Terreno)
 
 local estado = Remotes.Estado
@@ -103,6 +104,7 @@ end
 
 local function terminar()
 	jugadores = {}
+	Serpiente.detener()
 	task.spawn(Partida.preparar)
 end
 
@@ -176,9 +178,15 @@ function Partida.iniciar(grupo: { Player }, helipuerto: Model?)
 			table.insert(vivos, pl)
 		end
 	end
+	local serpienteLista = false
 	Intro.ejecutar(vivos, m.spawns, m.mirarInicio, function(pl: Player)
 		if table.find(jugadores, pl) then
 			entrarSelva(pl)
+			-- el reloj del primer monstruo empieza cuando aterriza el primero
+			if not serpienteLista then
+				serpienteLista = true
+				Serpiente.iniciar(m)
+			end
 		end
 	end)
 	if #jugadores == 0 and estado:GetAttribute("Estado") == "en_curso" then

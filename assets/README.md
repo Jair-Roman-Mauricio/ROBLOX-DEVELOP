@@ -54,3 +54,11 @@ Los árboles y plantas usan preferentemente sus MeshParts y SurfaceAppearances o
 `CatalogoVegetacion` intenta obtenerlos en ejecución y conserva únicamente sus elementos visuales. También acepta kits guardados como `.rbxm`/`.rbxmx` bajo `assets/VegetacionStore/` (se sincronizan a ReplicatedStorage.Modelos.VegetacionStore), o colocados en `ServerStorage.VegetacionStore` desde Studio. Preferir ServerStorage si no se necesita versionarlos: evita replicar todas las plantillas al entrar.
 
 Los archivos de los kits aún no se han descargado a este repositorio: la red del entorno no resuelve assetdelivery.roblox.com. La descarga desde Roblox durante Play y los permisos de sus dependencias requieren la comprobación del usuario. Conservar atribución y permisos de las mallas/texturas; no re-subir como propios los assets de otros creadores.
+
+## Serpiente (primer monstruo)
+
+`art/export/Serpiente.glb` sale de `art/blender/serpiente_por_segmentos.py`: la serpiente de
+Descargas enderezada y cortada en 24 segmentos (`Cabeza`, `Ojos`, `Cuerpo01..24`, `Lomo01..24`).
+Importarla en el place del equipo (File → Import 3D), dejar el modelo con el nombre
+`Serpiente` y guardarlo como `assets/Serpiente.rbxm` (queda en `ReplicatedStorage.Modelos`).
+Mientras no esté, el juego usa una serpiente de partes con la misma estructura.
