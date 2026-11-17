@@ -30,7 +30,9 @@ Config.Lobby = {
 	-- modelo están en metros; 1 stud = 0,28 m.
 	Plataforma = {
 		STUDS_POR_METRO = 1 / 0.28,
-		ESCALA = 1, -- 1 = tamaño real (cubierta de 150 m, ~535 studs)
+		-- 1 = tamaño real (cubierta de 535 studs): demasiado grande para caminar. Con 0.42 la
+		-- cubierta mide ~225 studs, queda ~45 sobre el mar y cada helipuerto es como el antiguo.
+		ESCALA = 0.42,
 		HELIPUERTOS = { "West", "NE", "East", "SE" }, -- uno por vuelo, en este orden
 		SEPARACION_HELIPUERTOS = 259, -- metros entre los helipuertos East y West
 		ALTURA_HELIPUERTOS = 32.4, -- metros sobre el mar de los helipuertos East y West
@@ -307,7 +309,7 @@ Config.Iluminacion = {
 			ColorShift_Top = Color3.fromRGB(200, 215, 230),
 			ColorShift_Bottom = Color3.fromRGB(40, 48, 58),
 			EnvironmentDiffuseScale = 0.6,
-			EnvironmentSpecularScale = 0.7,
+			EnvironmentSpecularScale = 1, -- el metal refleja el cielo de tormenta
 			ExposureCompensation = 0,
 		},
 		Atmosphere = {

@@ -13,10 +13,21 @@ en el juego).
   Blender -b <platform.blend> --python plataforma_hornear.py -- <salida.glb>
 """
 import bpy, bmesh, sys, math, os, time
+import numpy as np
 
 OUT = sys.argv[sys.argv.index("--") + 1]
 PLANOS = ("M_Lamp_", "M_Mark_", "M_Window_")
-PX_POR_M = 10  # densidad de textura
+PX_POR_M = 16  # densidad de textura
+
+# Metal (0..1) del acero limpio de cada material. El original lo deja en 0.15 y una rugosidad
+# alta: en Roblox se ve pintura mate. Aquí el metal limpio brilla, la pintura es semimetálica
+# (se ve acero bajo la pintura) y el óxido no es metal.
+METAL = {
+    "M_Steel_GreyBlue": 0.95, "M_Steel_DarkWet": 0.95, "M_Pipe_Grey": 0.95, "M_Grating": 0.95,
+    "M_Helideck": 0.6, "M_Cladding_GreyBlue": 0.75,
+    "M_Paint_Ochre": 0.55, "M_Leg_OchreWeathered": 0.55, "M_Brace_OchreWet": 0.55,
+    "M_Paint_Red": 0.5, "M_Paint_White": 0.5, "M_Lifeboat_Orange": 0.1,
+}
 MIN_TAM, MAX_TAM = 128, 1024
 
 sc = bpy.context.scene
@@ -71,8 +82,9 @@ for nombre, o in sorted(por_malla.items()):
     me.materials.clear(); me.materials.append(m)
     nt = m.node_tree
     imgs = {}
+    mitad = max(MIN_TAM, tam // 2)
     for clave, tipo, espacio, t in (("Color", 'DIFFUSE', 'sRGB', tam), ("Normal", 'NORMAL', 'Non-Color', tam),
-                                    ("Rugosidad", 'ROUGHNESS', 'Non-Color', max(MIN_TAM, tam // 2))):
+                                    ("Rugosidad", 'ROUGHNESS', 'Non-Color', mitad), ("AO", 'AO', 'Non-Color', mitad)):
         img = bpy.data.images.new(nombre + "_" + clave, t, t)
         img.colorspace_settings.name = espacio
         n = nt.nodes.new("ShaderNodeTexImage"); n.image = img
@@ -82,22 +94,47 @@ for nombre, o in sorted(por_malla.items()):
             sc.render.bake.use_pass_direct = False
             sc.render.bake.use_pass_indirect = False
             sc.render.bake.use_pass_color = True
+        sc.cycles.samples = 24 if tipo == 'AO' else 4
         bpy.ops.object.bake(type=tipo)
-        img.pack(); imgs[clave] = img
+        imgs[clave] = img
         nt.nodes.remove(n)
-    # metal: el valor del material original (constante)
-    bsdf = next((x for x in nt.nodes if x.type == 'BSDF_PRINCIPLED'), None)
-    metal = bsdf.inputs["Metallic"].default_value if bsdf and not bsdf.inputs["Metallic"].is_linked else 0.3
+
+    # --- mapas para Roblox
+    def pix(img):
+        w, h = img.size
+        return np.array(img.pixels[:], np.float32).reshape(h, w, 4)
+    rug = pix(imgs["Rugosidad"])[..., 0]
+    ao = pix(imgs["AO"])[..., 0]
+    # óxido: donde el shader original sube la rugosidad hacia 0.85
+    oxido = np.clip((rug - 0.66) / 0.16, 0, 1)
+    nivel = METAL.get(mat.name, 0.6)
+    metal = nivel * (1 - oxido)
+    rug2 = np.clip(rug * 0.62 + oxido * 0.3, 0.18, 1)
+    orm = np.stack([ao, rug2, metal, np.ones_like(ao)], -1)
+    img_orm = bpy.data.images.new(nombre + "_ORM", mitad, mitad)
+    img_orm.colorspace_settings.name = 'Non-Color'
+    img_orm.pixels = orm.ravel(); img_orm.pack()
+    # suciedad en juntas y rincones: la oclusión oscurece el color
+    col = pix(imgs["Color"])
+    h, w = col.shape[:2]
+    ao_grande = np.kron(ao, np.ones((h // ao.shape[0], w // ao.shape[1]), np.float32))
+    col[..., :3] *= (0.45 + 0.55 * ao_grande)[..., None]
+    imgs["Color"].pixels = col.ravel()
+    imgs["Color"].pack(); imgs["Normal"].pack()
+
     final = bpy.data.materials.new("R_" + nombre); final.use_nodes = True
     ft = final.node_tree; b = ft.nodes["Principled BSDF"]
     tc = ft.nodes.new("ShaderNodeTexImage"); tc.image = imgs["Color"]
     tn = ft.nodes.new("ShaderNodeTexImage"); tn.image = imgs["Normal"]
-    tr = ft.nodes.new("ShaderNodeTexImage"); tr.image = imgs["Rugosidad"]
+    to = ft.nodes.new("ShaderNodeTexImage"); to.image = img_orm
+    sep = ft.nodes.new("ShaderNodeSeparateColor")
     nm = ft.nodes.new("ShaderNodeNormalMap")
     ft.links.new(tc.outputs["Color"], b.inputs["Base Color"])
     ft.links.new(tn.outputs["Color"], nm.inputs["Color"]); ft.links.new(nm.outputs["Normal"], b.inputs["Normal"])
-    ft.links.new(tr.outputs["Color"], b.inputs["Roughness"])
-    b.inputs["Metallic"].default_value = metal
+    # glTF: rugosidad en G y metal en B de la misma imagen (metallicRoughnessTexture)
+    ft.links.new(to.outputs["Color"], sep.inputs["Color"])
+    ft.links.new(sep.outputs["Green"], b.inputs["Roughness"])
+    ft.links.new(sep.outputs["Blue"], b.inputs["Metallic"])
     me.materials.clear(); me.materials.append(final)
     for ob in objs:
         if ob.data == me and ob.material_slots:

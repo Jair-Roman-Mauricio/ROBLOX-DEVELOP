@@ -6,13 +6,18 @@ plataforma semisumergible a tamaño real en un mar del Norte en tormenta.
 ## Plataforma
 
 - `art/blender/plataforma_hornear.py` hace un UV a cada una de las 69 mallas únicas y hornea el
-  shader procedural (óxido, sal, zona húmeda, percebes) a color, relieve y rugosidad. Sin esto,
-  Roblox solo recibe el color base y se ve de plástico. Las lámparas, las marcas y las ventanas
+  shader procedural (óxido, sal, zona húmeda, percebes) a color, relieve y oclusión. Sin esto,
+  Roblox solo recibe el color base y se ve de plástico.
+- Metal: el original deja el metal en 0,15 con rugosidad alta (pintura mate). El horneado
+  genera un mapa de metal y rugosidad. El acero limpio queda casi del todo metálico, la
+  pintura semimetálica y el óxido sin metal. La rugosidad del metal limpio baja para que
+  refleje el cielo, y la oclusión oscurece juntas y rincones. Las lámparas, las marcas y las ventanas
   quedan de color plano.
 - En el juego (`Plataforma.importada`):
-  - **Escala:** se calcula con la distancia entre los helipuertos East y West (259 m) y se
-    deja a tamaño real (1 stud = 0,28 m). La cubierta mide unos 535 studs y queda a unos 107
-    studs sobre el mar. `Config.Lobby.Plataforma.ESCALA` la cambia.
+  - **Escala:** se calcula con la distancia entre los helipuertos East y West (259 m).
+    `Config.Lobby.Plataforma.ESCALA` = 0.42 del tamaño real (1 stud = 0,28 m). Así la cubierta
+    mide ~225 studs, queda ~45 sobre el mar y cada helipuerto es como el antiguo. A tamaño
+    real (1) los helicópteros quedaban demasiado lejos.
   - **Orientación:** sale de los mismos helipuertos (East-West y SE-NE).
   - **Vuelos:** van en los helipuertos West, NE, East y SE. El de la acomodación (Quarters)
     queda libre.

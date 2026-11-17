@@ -92,6 +92,9 @@ end
 -- Espuma, rociones, niebla y olas en una pata. `viento`: hacia dónde van las olas.
 local function pata(padre: Instance, pie: Vector3, radio: number, viento: Vector3)
 	local m = Kit.modelo("Pata", padre)
+	-- a tamaño real la pata mide ~21 studs de radio; los rociones suben menos si la plataforma
+	-- es más pequeña (la altura va con el cuadrado de la velocidad)
+	local f = math.sqrt(radio / (6 / 0.28))
 	-- espuma: manchas planas alrededor, más largas río abajo del viento
 	local espuma = ancla(m, "Espuma", CFrame.new(pie + viento * radio * 0.6), Vector3.new(radio * 3, 1, radio * 3))
 	emisor(espuma, {
@@ -130,7 +133,7 @@ local function pata(padre: Instance, pie: Vector3, radio: number, viento: Vector
 		Color = ColorSequence.new(Color3.fromRGB(235, 242, 245)),
 		Size = NumberSequence.new(0.9, 0.3),
 		Lifetime = NumberRange.new(1.4, 2.4),
-		Speed = NumberRange.new(45, 90),
+		Speed = NumberRange.new(45 * f, 90 * f),
 		Acceleration = Vector3.new(0, -80, 0) + viento * 18,
 		Drag = 0.4,
 		LightInfluence = 0.7,
@@ -148,7 +151,7 @@ local function pata(padre: Instance, pie: Vector3, radio: number, viento: Vector
 		}),
 		Size = NumberSequence.new(8, 26),
 		Lifetime = NumberRange.new(2, 3.5),
-		Speed = NumberRange.new(20, 40),
+		Speed = NumberRange.new(20 * f, 40 * f),
 		Acceleration = Vector3.new(0, -12, 0) + viento * 14,
 		Drag = 1,
 		LightInfluence = 0.7,
