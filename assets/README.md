@@ -62,3 +62,13 @@ Descargas enderezada y cortada en 24 segmentos (`Cabeza`, `Ojos`, `Cuerpo01..24`
 Importarla en el place del equipo (File → Import 3D), dejar el modelo con el nombre
 `Serpiente` y guardarlo como `assets/Serpiente.rbxm` (queda en `ReplicatedStorage.Modelos`).
 Mientras no esté, el juego usa una serpiente de partes con la misma estructura.
+
+## Plataforma del lobby
+
+`art/export/Plataforma.glb` sale de `art/blender/plataforma_hornear.py` aplicado a
+`platform.blend` (Descargas/storm-rig): las 62 mallas con shader procedural tienen UV y llevan
+horneados el color, el relieve y la rugosidad. Importarla en el place del equipo con el
+importador 3D, con "Me" como creador. La unidad da igual: `Plataforma.importada` mide la
+distancia entre los helipuertos East y West y la escala a tamaño real. Guardarla como
+`assets/Plataforma.rbxm` (queda en `ReplicatedStorage.Modelos.Plataforma`). Mientras no esté,
+el lobby usa la plataforma de partes. Ver `docs/PLATAFORMA.md`.

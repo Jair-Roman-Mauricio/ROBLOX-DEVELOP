@@ -1,8 +1,122 @@
 --!strict
--- Plataforma offshore modular. No escribe ni limpia Terrain; el mar decorativo está
--- lejos de la selva, no cambia el agua del río ni reemplaza contenido del place.
+-- Plataforma offshore. Si existe la plantilla importada (ReplicatedStorage.Modelos.Plataforma,
+-- de art/export/Plataforma.glb) se usa esa; si no, se construye una de respaldo con partes.
+-- No escribe ni limpia Terrain (el mar lo pone Lobby/Mar).
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
 local Kit = require(script.Parent.Kit)
 local Plataforma = {}
+
+local P = Config.Lobby.Plataforma
+
+-- Lo que el lobby necesita de la plataforma: dónde aparecen los jugadores, dónde van los
+-- helicópteros y cómo pasar de metros del modelo original a studs del mundo.
+export type Importada = {
+	modelo: Model,
+	spawn: CFrame,
+	helipuertos: { Vector3 }, -- centro de la superficie de cada helipuerto
+	punto: (metros: Vector3) -> Vector3, -- x, y en el plano de la plataforma; z hacia arriba
+	studsPorMetro: number,
+}
+
+local function parteDe(i: Instance?): BasePart?
+	if not i then
+		return nil
+	elseif i:IsA("BasePart") then
+		return i
+	end
+	return i:FindFirstChildWhichIsA("BasePart", true)
+end
+
+local function plano(v: Vector3): Vector3
+	return Vector3.new(v.X, 0, v.Z)
+end
+
+-- Superficie de una parte bajo un punto, mirando solo esa parte.
+local function techo(parte: BasePart, desde: Vector3): Vector3
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { parte }
+	local r = workspace:Raycast(desde + Vector3.yAxis * 60, Vector3.yAxis * -120, params)
+	return if r then r.Position else desde + Vector3.yAxis * parte.Size.Y / 2
+end
+
+function Plataforma.importada(c: Vector3, padre: Instance): Importada?
+	local modelos = ReplicatedStorage:FindFirstChild("Modelos")
+	local modelo = modelos and modelos:FindFirstChild("Plataforma")
+	if not (modelo and modelo:IsA("Model")) then
+		return nil
+	end
+	local function pad(nombre: string): BasePart?
+		return parteDe(modelo:FindFirstChild(("PLAT_Helideck_%s_Pad"):format(nombre), true))
+	end
+	local este, oeste, ne, se = pad("East"), pad("West"), pad("NE"), pad("SE")
+	if not (este and oeste and ne and se) then
+		warn("[Lobby] la plataforma importada no tiene los helipuertos East, West, NE y SE; uso la de respaldo")
+		return nil
+	end
+
+	-- escala: la distancia entre los helipuertos East y West es conocida en metros
+	local k = P.STUDS_POR_METRO * P.ESCALA
+	local actual = (este.Position - oeste.Position).Magnitude / P.SEPARACION_HELIPUERTOS
+	modelo:ScaleTo(modelo:GetScale() * k / actual)
+
+	-- ejes del modelo original en el mundo: x hacia East, y hacia NE desde SE, z arriba
+	local ex = plano(este.Position - oeste.Position).Unit
+	local ey = plano(ne.Position - se.Position)
+	ey = (ey - ex * ey:Dot(ex)).Unit
+	local medio = (este.Position + oeste.Position) / 2
+	local origen = Vector3.new(medio.X, medio.Y - P.ALTURA_HELIPUERTOS * k, medio.Z)
+	modelo:PivotTo(CFrame.new(c - origen) * modelo:GetPivot())
+	local function punto(m: Vector3): Vector3
+		return c + ex * m.X * k + ey * m.Y * k + Vector3.yAxis * m.Z * k
+	end
+
+	-- todo anclado; las lámparas brillan y unas cuantas iluminan de verdad
+	local blancas = 0
+	for _, d in modelo:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true
+			local blanca = string.find(d.Name, "^PLAT_Lamp_White") ~= nil
+			local roja = string.find(d.Name, "^PLAT_Lamp_Red") ~= nil
+			if blanca or roja then
+				d.Material = Enum.Material.Neon
+				d.Color = if roja then Color3.fromRGB(255, 50, 40) else Color3.fromRGB(255, 226, 170)
+				d.CanCollide = false
+				d.CastShadow = false
+				if blanca then
+					blancas += 1
+					if blancas % 3 == 0 and blancas / 3 <= P.LUCES_MAX then
+						Kit.luz(d, Color3.fromRGB(255, 210, 150), 32, 1.2)
+					end
+				end
+			end
+		end
+	end
+	modelo.Name = "PlataformaOffshore"
+	modelo.Parent = padre
+
+	local helipuertos: { Vector3 } = {}
+	for _, nombre in P.HELIPUERTOS do
+		local p = pad(nombre)
+		if p then
+			table.insert(helipuertos, techo(p, p.Position))
+		end
+	end
+
+	-- aparecer sobre la cubierta, mirando hacia la torre
+	local pie = punto(P.SPAWN)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { modelo }
+	local r = workspace:Raycast(pie + Vector3.yAxis * 400, Vector3.yAxis * -600, params)
+	local suelo = if r then r.Position else punto(Vector3.new(P.SPAWN.X, P.SPAWN.Y, 30))
+	local mirar = punto(P.MIRAR)
+	local spawn = CFrame.lookAt(suelo + Vector3.yAxis * 3, Vector3.new(mirar.X, suelo.Y + 3, mirar.Z))
+
+	return { modelo = modelo, spawn = spawn, helipuertos = helipuertos, punto = punto, studsPorMetro = k }
+end
 local M = Enum.Material
 local ACERO = Color3.fromRGB(48, 60, 68)
 local BORDE = Color3.fromRGB(89, 102, 108)
@@ -74,19 +188,6 @@ end
 
 function Plataforma.construir(c: Vector3, padre: Instance)
 	local m = Kit.modelo("PlataformaOffshore", padre)
-	-- Cuadrícula de planos: cada pieza respeta el límite de tamaño del motor.
-	for x = -2, 2 do
-		for z = -2, 2 do
-			Kit.parte(
-				m,
-				CFrame.new(c + Vector3.new(x * 1900, -24, z * 1900)),
-				Vector3.new(1900, 0.3, 1900),
-				Color3.fromRGB(14, 42, 57),
-				M.SmoothPlastic,
-				{ colision = false, consulta = false, sombra = false, reflejo = 0.3, nombre = "Mar" }
-			)
-		end
-	end
 	-- Cubierta 80 x 80, chapa modular y vigas estructurales visibles bajo el borde.
 	for x = -2, 2 do
 		for z = -2, 2 do
