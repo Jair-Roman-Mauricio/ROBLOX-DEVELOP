@@ -59,6 +59,15 @@ Config.Lobby = {
 	},
 }
 
+-- Correr: mantener Shift (L3 en mando, botón en pantalla táctil). De momento solo en el lobby;
+-- en la selva queda pendiente de decidir si hay resistencia.
+Config.Correr = {
+	ZONAS = { Lobby = true },
+	CAMINAR = 16,
+	CORRER = 28,
+	FOV_EXTRA = 6, -- la cámara se abre un poco al correr (0 si el jugador pide reducir movimiento)
+}
+
 -- Intro dentro del helicóptero: el piloto bromea, lo posee un espíritu y da 30 s para saltar.
 Config.Intro = {
 	CABINA = Vector3.new(2600, 700, 0), -- escenario de la cabina, lejos del mapa y del lobby
