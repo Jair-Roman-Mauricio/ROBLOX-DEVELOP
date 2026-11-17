@@ -107,6 +107,20 @@ local function terminar()
 end
 
 local function entrarSelva(pl: Player)
+	-- La linterna es la única luz personal: nadie aterriza sin una.
+	local botin = pl:FindFirstChild("Botin")
+	if not botin then
+		local nuevo = Instance.new("Folder")
+		nuevo.Name = "Botin"
+		nuevo.Parent = pl
+		botin = nuevo
+	end
+	if botin and not botin:FindFirstChild(Config.Linterna.OBJETO) then
+		local linterna = Instance.new("StringValue")
+		linterna.Name = Config.Linterna.OBJETO
+		linterna.Value = Config.Linterna.OBJETO
+		linterna.Parent = botin
+	end
 	pl:SetAttribute("Zona", "Partida")
 	-- primera persona fija: el jugador no puede alejar la cámara
 	pl.CameraMode = Enum.CameraMode.LockFirstPerson
