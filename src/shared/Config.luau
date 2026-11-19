@@ -280,6 +280,33 @@ Config.VegetacionStore = {
 	},
 }
 
+-- Agua viva (server/Agua.luau y client/Agua.luau). Los peligros (pirañas y anaconda) son
+-- PROPUESTA: el catálogo de amenazas sigue abierto en CONTEXT.md.
+Config.Agua = {
+	CORRIENTE = 7, -- studs/s que te arrastra el río mientras nadas en él
+	MUESTRA_RIO = 24, -- separación de los puntos del río que se mandan a los clientes
+	PIRANAS = {
+		TRAMOS = 3, -- tramos del río con pirañas
+		RADIO = 26,
+		SEPARACION = 220,
+		DANO = 6, -- por mordisco
+		CADA = 0.6, -- segundos entre mordiscos mientras sigas nadando ahí
+	},
+	ANACONDA = {
+		ACTIVA = true,
+		RONDA = 5, -- velocidad rondando el lago
+		CAZA = 12, -- persiguiendo (nadar es más rápido: se puede escapar)
+		VISTA = 45,
+		ALCANCE = 6,
+		DANO = 30,
+		ENFRIAMIENTO = 5,
+		PROFUNDIDAD = 3, -- bajo la superficie mientras ronda
+		GRACIA = 25, -- segundos tras aterrizar sin peligros del agua
+	},
+	DELFINES = 3, -- delfines rosados cerca del jugador (solo visuales)
+	RESTOS = 14, -- hojas y ramas que flotan río abajo (solo visuales)
+}
+
 Config.Partida = {
 	-- Primera persona estable: tensión por encuadre y periferia, sin movimiento artificial.
 	Camara = {

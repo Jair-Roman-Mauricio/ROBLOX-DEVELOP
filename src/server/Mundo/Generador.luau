@@ -24,6 +24,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Atmosfera = require(script.Parent.Parent.Modelos.Atmosfera)
 local Culto = require(script.Parent.Parent.Modelos.Culto)
 local Detalles = require(script.Parent.Detalles)
+local Agua = require(script.Parent.Parent.Agua)
 local Disposicion = require(script.Parent.Disposicion)
 local Dispersion = require(script.Parent.Dispersion)
 local Terreno = require(script.Parent.Terreno)
@@ -247,6 +248,7 @@ function Generador.generar(semilla: number, padre: Instance, progreso: (number, 
 
 	progreso(0.95, "Despertando la selva")
 	Detalles.decorar(rng, disp, datos, carpeta, carpetaVeg, claros)
+	Agua.preparar(rng, disp, carpeta)
 
 	-- los jugadores aparecen mirando hacia el primer pueblo
 	local a, b = disp.porId.A.pos, disp.porId.B.pos
