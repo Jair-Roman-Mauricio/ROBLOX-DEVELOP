@@ -176,7 +176,33 @@ function Ambiente.iniciar()
 	end
 	aplicarPreset = aplicar
 	jugador:GetAttributeChangedSignal("Zona"):Connect(actualizar)
-	workspace:GetAttributeChangedSignal("SelvaDia"):Connect(actualizar)
+	-- el ciclo de día y noche (server/Ciclo.luau) cambia SelvaDia: amanecer y anochecer suaves
+	workspace:GetAttributeChangedSignal("SelvaDia"):Connect(function()
+		if jugador:GetAttribute("Zona") == "Partida" then
+			aplicar(selva(), Config.Ciclo.TRANSICION)
+		else
+			actualizar()
+		end
+	end)
+
+	-- el sol y la luna siguen la hora de la selva; entre las muestras del servidor (2 por
+	-- segundo) la hora avanza aquí al mismo ritmo para que no dé saltos
+	local horaLocal: number? = nil
+	RunService.RenderStepped:Connect(function(dt: number)
+		local h = workspace:GetAttribute("HoraSelva")
+		if not Config.Ciclo.ACTIVO or jugador:GetAttribute("Zona") ~= "Partida" or typeof(h) ~= "number" then
+			horaLocal = nil
+			return
+		end
+		local local_ = horaLocal
+		if not local_ or math.abs(((h - local_ + 12) % 24) - 12) > 0.5 then
+			local_ = h
+		else
+			local_ = (local_ + dt * 24 / Config.Ciclo.DURACION) % 24
+		end
+		horaLocal = local_
+		Lighting.ClockTime = local_
+	end)
 	aplicar("Lobby", 0)
 	actualizar()
 end
