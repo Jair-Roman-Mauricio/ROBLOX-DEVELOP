@@ -41,12 +41,18 @@ export type ZonaMundo = {
 	radio: number,
 }
 
+-- Un sitio donde puede aterrizar el equipo: cuatro puntos y hacia dónde mirar.
+export type Aparicion = { nombre: string, spawns: { Vector3 }, mirar: Vector3 }
+
 export type Mundo = {
 	semilla: number,
 	carpeta: Folder,
 	zonas: { ZonaMundo },
 	spawns: { Vector3 },
 	mirarInicio: Vector3,
+	-- sitios de aterrizaje posibles; Partida elige uno al azar en cada expedición. El primero
+	-- es el claro inicial (A); los demás, campamentos junto a los senderos.
+	apariciones: { Aparicion },
 	-- alturas del terreno tal como se generó y el grafo de zonas (los usa la serpiente)
 	datos: Terreno.Datos,
 	disposicion: Disposicion.Disposicion,
@@ -127,6 +133,69 @@ local function limites(padre: Instance)
 			})
 		end
 	end
+end
+
+-- Otros sitios de aterrizaje: puntos de los senderos lejos de las zonas y entre sí, cada uno con
+-- un campamento pequeño (bengala y equipaje) para que se lea como sitio de llegada.
+function Generador.apariciones(
+	rng: Random,
+	disp: Disposicion.Disposicion,
+	zonas: { ZonaMundo },
+	padre: Instance
+): { Aparicion }
+	local lista: { Aparicion } = {}
+	local centros: { Vector3 } = {}
+	for _, z in zonas do
+		if z.tipo == "inicio" then
+			table.insert(centros, z.centro)
+		end
+	end
+	local carpeta = Instance.new("Folder")
+	carpeta.Name = "Aterrizajes"
+	carpeta.Parent = padre
+	for _ = 1, C.APARICIONES * 40 do
+		if #lista >= C.APARICIONES then
+			break
+		end
+		local cam = Kit.elegir(rng, disp.caminos)
+		if #cam.puntos >= 5 then
+			local k = rng:NextInteger(3, #cam.puntos - 2)
+			local p = cam.puntos[k]
+			local suelo, mat = Kit.suelo(p.X, p.Y)
+			local valido = suelo ~= nil and mat ~= Enum.Material.Water
+			for _, z in zonas do
+				if
+					valido
+					and (Vector2.new(z.centro.X, z.centro.Z) - p).Magnitude < z.radio + C.APARICION_LEJOS_ZONAS
+				then
+					valido = false
+				end
+			end
+			for _, c in centros do
+				if valido and (Vector2.new(c.X, c.Z) - p).Magnitude < C.APARICION_SEPARACION then
+					valido = false
+				end
+			end
+			if valido and suelo then
+				local dir = cam.puntos[k + 1] - cam.puntos[k - 1]
+				local mirar = Vector3.new(dir.X, 0, dir.Y).Unit
+				local costado = Vector3.new(-mirar.Z, 0, mirar.X)
+				local spawns = {}
+				for i = 1, Config.MAX_POR_EQUIPO do
+					local q = suelo + costado * ((i - 2.5) * 3.5) - mirar * 2
+					local s = Kit.suelo(q.X, q.Z) or q
+					table.insert(spawns, s + Vector3.new(0, 3.5, 0))
+				end
+				local m = Kit.modelo(("Aterrizaje%d"):format(#lista + 1), carpeta)
+				local base = CFrame.lookAt(suelo, suelo + mirar)
+				Estructuras.bengala(base * CFrame.new(C.ANCHO_CAMINO + 3, 0, -4), m)
+				Estructuras.maletas(rng, base * CFrame.new(-(C.ANCHO_CAMINO + 3), 0, 3), m)
+				table.insert(centros, suelo)
+				table.insert(lista, { nombre = m.Name, spawns = spawns, mirar = mirar })
+			end
+		end
+	end
+	return lista
 end
 
 function Generador.generar(semilla: number, padre: Instance, progreso: (number, string) -> ()): Mundo
@@ -252,6 +321,9 @@ function Generador.generar(semilla: number, padre: Instance, progreso: (number, 
 	local a, b = disp.porId.A.pos, disp.porId.B.pos
 	local mirar = Vector3.new(b.X - a.X, 0, b.Y - a.Y).Unit
 
+	local apariciones = Generador.apariciones(rng, disp, zonas, carpeta)
+	table.insert(apariciones, 1, { nombre = "Claro inicial", spawns = spawns, mirar = mirar })
+
 	progreso(1, "Lista")
 	return {
 		semilla = semilla,
@@ -259,6 +331,7 @@ function Generador.generar(semilla: number, padre: Instance, progreso: (number, 
 		zonas = zonas,
 		spawns = spawns,
 		mirarInicio = mirar,
+		apariciones = apariciones,
 		datos = datos,
 		disposicion = disp,
 	}

@@ -12,7 +12,7 @@ Objetivo principal: sobrevivir y escapar. Objetivo secundario: encontrar pueblos
 
 ## Reglas confirmadas
 
-- Equipos de hasta 4 jugadores. El mapa cambia entre partidas y debe generar todo lo necesario para avanzar y escapar.
+- Equipos de hasta 4 jugadores. ~~El mapa cambia entre partidas~~ **Mapa fijo** (cambio decidido por CarloZD el 18 de noviembre de 2026; pendiente de que lo confirme el resto del equipo): todas las expediciones juegan la misma selva, generada siempre con la misma semilla (`Config.Mapa.SEMILLA_FIJA`), y lo que cambia en cada partida es el sitio de aterrizaje del equipo (el claro inicial u otros campamentos junto a los senderos). El generador sigue produciendo todo lo necesario para avanzar y escapar.
 
 - El accidente ocurre en un helicóptero. Los jugadores pueden encontrar sus restos más adelante y utilizar su radar.
 
