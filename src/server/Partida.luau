@@ -81,7 +81,9 @@ function Partida.preparar()
 			resto:Destroy()
 		end
 		Terreno.limpiar()
-		local semilla = Random.new():NextInteger(1, 2 ^ 30)
+		-- mapa fijo (Config.Mapa.SEMILLA_FIJA): siempre la misma selva; si fallara, otra al azar
+		local fija = Config.Mapa.SEMILLA_FIJA
+		local semilla = if fija and intento == 1 then fija else Random.new():NextInteger(1, 2 ^ 30)
 		ok, resultado = pcall(Generador.generar, semilla, workspace, function(f: number, etapa: string)
 			estado:SetAttribute("Progreso", f)
 			estado:SetAttribute("Etapa", etapa)
@@ -198,7 +200,10 @@ function Partida.iniciar(grupo: { Player }, helipuerto: Model?)
 		end
 	end
 	local serpienteLista = false
-	Intro.ejecutar(vivos, m.spawns, m.mirarInicio, function(pl: Player)
+	-- el mapa puede ser fijo, pero el sitio de aterrizaje cambia en cada expedición
+	local llegada = m.apariciones[Random.new():NextInteger(1, #m.apariciones)]
+	print(("[Selva] el equipo aterriza en: %s"):format(llegada.nombre))
+	Intro.ejecutar(vivos, llegada.spawns, llegada.mirar, function(pl: Player)
 		if table.find(jugadores, pl) then
 			entrarSelva(pl)
 			-- el reloj del primer monstruo empieza cuando aterriza el primero

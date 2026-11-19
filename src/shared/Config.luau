@@ -189,6 +189,14 @@ Config.Mapa = {
 	PENDIENTE_CAMINO = 1.6, -- desnivel máximo entre muestras de sendero (cada 4 studs)
 	PUENTE_MAX = 140, -- un cruce más largo invalida la semilla
 	INTENTOS = 12,
+	-- Mapa fijo (decisión del 18-nov-2026, ver CONTEXT.md): todas las expediciones juegan la
+	-- misma selva. nil = una selva distinta en cada partida, como antes.
+	SEMILLA_FIJA = 20261118 :: number?,
+	-- Sitios de aterrizaje además del claro inicial; Partida elige uno al azar en cada
+	-- expedición, así el mapa es el mismo pero no se empieza siempre en el mismo sitio.
+	APARICIONES = 4,
+	APARICION_LEJOS_ZONAS = 90, -- distancia mínima al borde de cualquier zona
+	APARICION_SEPARACION = 300, -- distancia mínima entre sitios de aterrizaje
 	ATAJOS = { 2, 3 }, -- caminos extra además de la ruta A-B-C-D-E-F
 	ESPEJO_ALEATORIO = true, -- refleja el mapa este-oeste en la mitad de las semillas
 	Vegetacion = {
