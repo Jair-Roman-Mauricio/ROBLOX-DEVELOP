@@ -49,39 +49,71 @@ function Animales.jaguar(rng: Random, cf: CFrame, padre: Instance): Model
 	Kit.ovoide(m, en(0, 0.2, -1.9), Vector3.new(2, 2.1, 2.2), pelaje, M.Fabric, SIN)
 	Kit.ovoide(m, en(0, -0.45, 0), Vector3.new(1.6, 1, 4.4), PELAJE_CLARO, M.Fabric, SIN)
 
+	-- Grupos para la animación del cliente (client/Fauna.luau): patas, cola y cabeza giran
+	-- alrededor de su articulación, en coordenadas de la raíz.
+	local function marcar(parte: BasePart, grupo: string, articulacion: Vector3, paso: number?)
+		parte:SetAttribute("Grupo", grupo)
+		parte:SetAttribute("Articulacion", articulacion)
+		parte:SetAttribute("Paso", paso or 0)
+	end
+	local CUELLO = Vector3.new(0, 0.6, -2.6)
+
 	-- cabeza
-	Kit.ovoide(m, en(0, 0.75, -3.3), Vector3.new(1.6, 1.35, 1.7), pelaje, M.Fabric, SIN)
-	Kit.ovoide(m, en(0, 0.45, -4.1), Vector3.new(0.95, 0.7, 0.9), PELAJE_CLARO, M.Fabric, SIN)
-	Kit.ovoide(m, en(0, 0.62, -4.55), Vector3.new(0.35, 0.25, 0.15), MANCHA, M.SmoothPlastic, DETALLE)
+	marcar(Kit.ovoide(m, en(0, 0.75, -3.3), Vector3.new(1.6, 1.35, 1.7), pelaje, M.Fabric, SIN), "Cabeza", CUELLO)
+	marcar(Kit.ovoide(m, en(0, 0.45, -4.1), Vector3.new(0.95, 0.7, 0.9), PELAJE_CLARO, M.Fabric, SIN), "Cabeza", CUELLO)
+	marcar(
+		Kit.ovoide(m, en(0, 0.62, -4.55), Vector3.new(0.35, 0.25, 0.15), MANCHA, M.SmoothPlastic, DETALLE),
+		"Cabeza",
+		CUELLO
+	)
 
 	for _, s in { -1, 1 } do
-		Kit.ovoide(m, en(0.55 * s, 1.4, -3.15), Vector3.new(0.45, 0.45, 0.2), pelaje, M.Fabric, DETALLE)
-		Kit.ovoide(m, en(0.4 * s, 0.95, -4.05), Vector3.new(0.24, 0.18, 0.12), OJO, M.Neon, {
+		marcar(
+			Kit.ovoide(m, en(0.55 * s, 1.4, -3.15), Vector3.new(0.45, 0.45, 0.2), pelaje, M.Fabric, DETALLE),
+			"Cabeza",
+			CUELLO
+		)
+		local ojo = Kit.ovoide(m, en(0.4 * s, 0.95, -4.05), Vector3.new(0.24, 0.18, 0.12), OJO, M.Neon, {
 			colision = false,
 			consulta = false,
 			sombra = false,
 			nombre = "Ojo",
 		})
+		marcar(ojo, "Cabeza", CUELLO)
 		-- patas: delanteras más finas
 		for _, z in { -1.8, 1.7 } do
 			local cadera = p(0.72 * s, -0.2, z)
 			local pie = p(0.72 * s, -2.2, z - 0.15)
-			Kit.cilindro(m, cadera, pie, if z < 0 then 0.62 else 0.7, pelaje, M.Fabric, SIN)
-			Kit.ovoide(
-				m,
-				CFrame.new(pie) * cf.Rotation * CFrame.new(0, -0.05, -0.15),
-				Vector3.new(0.7, 0.35, 0.85),
-				pelaje,
-				M.Fabric,
-				DETALLE
+			-- paso en diagonal: delantera izquierda con trasera derecha, y al revés
+			local paso = if (s < 0) == (z < 0) then 0 else math.pi
+			local articulacion = Vector3.new(0.72 * s, -0.2, z)
+			marcar(
+				Kit.cilindro(m, cadera, pie, if z < 0 then 0.62 else 0.7, pelaje, M.Fabric, SIN),
+				"Pata",
+				articulacion,
+				paso
+			)
+			marcar(
+				Kit.ovoide(
+					m,
+					CFrame.new(pie) * cf.Rotation * CFrame.new(0, -0.05, -0.15),
+					Vector3.new(0.7, 0.35, 0.85),
+					pelaje,
+					M.Fabric,
+					DETALLE
+				),
+				"Pata",
+				articulacion,
+				paso
 			)
 		end
 	end
 
 	-- cola con la punta oscura
 	local c0, c1, c2 = p(0, 0.4, 2.6), p(0, -0.3, 4.4), p(0, 0.2, 5.6)
-	Kit.cilindro(m, c0, c1, 0.38, pelaje, M.Fabric, SIN)
-	Kit.cilindro(m, c1, c2, 0.32, MANCHA, M.Fabric, SIN)
+	local BASE_COLA = Vector3.new(0, 0.4, 2.6)
+	marcar(Kit.cilindro(m, c0, c1, 0.38, pelaje, M.Fabric, SIN), "Cola", BASE_COLA)
+	marcar(Kit.cilindro(m, c1, c2, 0.32, MANCHA, M.Fabric, SIN), "Cola", BASE_COLA)
 
 	-- rosetas sobre el lomo y los costados
 	for _ = 1, 16 do

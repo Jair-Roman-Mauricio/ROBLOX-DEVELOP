@@ -131,8 +131,22 @@ local function registrar(original: Instance, tipo: string, id: number)
 		modelo:Destroy()
 		return
 	end
+	-- Troncos caídos y rocas de los kits: son más anchos que altos y el poste del tronco no los
+	-- cubre, así que se atravesaban. Llevan una caja de colisión con su forma aproximada.
+	-- (CollisionFidelity no se puede cambiar en juego, por eso cajas invisibles.)
+	local tendido = tam.Y < math.max(tam.X, tam.Z) * 0.8
+	if tendido then
+		Kit.parte(
+			modelo,
+			caja * CFrame.new(0, -tam.Y * 0.1, 0),
+			tam * Vector3.new(0.85, 0.8, 0.85),
+			Color3.new(),
+			Enum.Material.SmoothPlastic,
+			{ transparencia = 1, sombra = false, consulta = false, nombre = "ColisionCuerpo" }
+		)
+	end
 	-- Colisión simple solo en el tronco; nunca en las hojas o la copa.
-	if tipo == "arbol" or tipo == "palmera" or tipo == "seco" then
+	if not tendido and (tipo == "arbol" or tipo == "palmera" or tipo == "seco") then
 		local d = if tronco then math.min(tronco.Size.X, tronco.Size.Z) else tam.Y * 0.025
 		d = math.clamp(d, 0.4, math.max(0.4, tam.Y * 0.08))
 		local pos = if tronco then tronco.Position else caja.Position

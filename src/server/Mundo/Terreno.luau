@@ -747,11 +747,18 @@ function Terreno.escribir(datos: Datos, progreso: (number) -> ())
 				Vector3.new(centro(ix0) - CELDA / 2, y0, centro(iz0) - CELDA / 2),
 				Vector3.new(centro(ix0 + BLOQUE - 1) + CELDA / 2, y1, centro(iz0 + BLOQUE - 1) + CELDA / 2)
 			)
+			-- Dos versiones: la clásica (un material por celda) y la de canales, donde una celda
+			-- puede tener suelo Y agua. Con la clásica, en la orilla y en lo poco hondo la celda del
+			-- fondo era suelo + aire: se veía la superficie del lago pero no se podía nadar, se
+			-- caminaba por el fondo (baúl: Terrain Deep Dive, "Shorelines and the liquid channel").
 			local mats, occs = table.create(BLOQUE), table.create(BLOQUE)
+			local solidos, liquidos = table.create(BLOQUE), table.create(BLOQUE)
 			for lx = 1, BLOQUE do
 				local mx, ox = table.create(ny), table.create(ny)
+				local sx, lqx = table.create(ny), table.create(ny)
 				for ly = 1, ny do
 					mx[ly], ox[ly] = table.create(BLOQUE), table.create(BLOQUE)
+					sx[ly], lqx[ly] = table.create(BLOQUE), table.create(BLOQUE)
 				end
 				for lz = 1, BLOQUE do
 					local i = indice(ix0 + lx - 1, iz0 + lz - 1)
@@ -761,22 +768,41 @@ function Terreno.escribir(datos: Datos, progreso: (number) -> ())
 					for ly = 1, ny do
 						local fondo = y0 + (ly - 1) * CELDA
 						local occ = (h - fondo) / CELDA
+						local bajoAgua = (mojado and fondo < AGUA) or (propio > 0 and fondo < propio)
 						if occ >= 0.08 then
 							ox[ly][lz] = math.min(occ, 1)
 							-- lo profundo es roca: se ve en los acantilados
 							mx[ly][lz] = if fondo < h - 10 then M.Rock else mat
-						elseif (mojado and fondo < AGUA) or (propio > 0 and fondo < propio) then
+							sx[ly][lz] = mx[ly][lz]
+							-- suelo que no llena la celda bajo el nivel del agua: el resto es agua
+							lqx[ly][lz] = if bajoAgua and occ < 1 then 1 else 0
+						elseif bajoAgua then
 							ox[ly][lz] = 1
 							mx[ly][lz] = M.Water
+							sx[ly][lz] = M.Air
+							lqx[ly][lz] = 1
 						else
 							ox[ly][lz] = 0
 							mx[ly][lz] = M.Air
+							sx[ly][lz] = M.Air
+							lqx[ly][lz] = 0
 						end
 					end
 				end
 				mats[lx], occs[lx] = mx, ox
+				solidos[lx], liquidos[lx] = sx, lqx
 			end
-			terreno:WriteVoxels(region, CELDA, mats, occs)
+			local conCanales = pcall(function()
+				terreno:WriteVoxelChannels(region, CELDA, {
+					SolidMaterial = solidos,
+					SolidOccupancy = occs,
+					LiquidOccupancy = liquidos,
+				})
+			end)
+			if not conCanales then
+				-- place sin la mejora de orillas (Shorelines): escritura clásica
+				terreno:WriteVoxels(region, CELDA, mats, occs)
+			end
 			hechos += 1
 			progreso(hechos / (bloques * bloques))
 			task.wait()
