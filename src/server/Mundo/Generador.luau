@@ -152,6 +152,11 @@ function Generador.apariciones(
 			table.insert(centros, z.centro)
 		end
 	end
+	-- choques que impedirían moverse al aparecer (el terreno no cuenta: ya se apoya en él)
+	local libreDe = OverlapParams.new()
+	libreDe.FilterType = Enum.RaycastFilterType.Exclude
+	libreDe.FilterDescendantsInstances = { workspace.Terrain }
+	libreDe.RespectCanCollide = true
 	local carpeta = Instance.new("Folder")
 	carpeta.Name = "Aterrizajes"
 	carpeta.Parent = padre
@@ -183,10 +188,18 @@ function Generador.apariciones(
 				local mirar = Vector3.new(dir.X, 0, dir.Y).Unit
 				local costado = Vector3.new(-mirar.Z, 0, mirar.X)
 				local spawns = {}
+				local despejado = true
 				for i = 1, Config.MAX_POR_EQUIPO do
 					local q = suelo + costado * ((i - 2.5) * 3.5) - mirar * 2
 					local s = Kit.suelo(q.X, q.Z) or q
 					table.insert(spawns, s + Vector3.new(0, 3.5, 0))
+					-- nadie puede aparecer encajado en un tronco, una roca o una casa
+					if #workspace:GetPartBoundsInRadius(s + Vector3.new(0, 3, 0), 2.5, libreDe) > 0 then
+						despejado = false
+					end
+				end
+				if not despejado then
+					continue
 				end
 				local m = Kit.modelo(("Aterrizaje%d"):format(#lista + 1), carpeta)
 				local base = CFrame.lookAt(suelo, suelo + mirar)
