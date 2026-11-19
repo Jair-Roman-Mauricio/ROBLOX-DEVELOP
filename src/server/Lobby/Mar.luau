@@ -21,6 +21,8 @@ local Kit = require(script.Parent.Parent.Modelos.Kit)
 
 local L = Config.Lobby
 local MAR = L.Mar
+-- medio lado de la selva más un margen: ahí no se pone horizonte
+local SELVA = Config.Mapa.TAMANO / 2 + 1024
 local P = L.Plataforma
 
 local HUMO = "rbxasset://textures/particles/smoke_main.dds"
@@ -74,8 +76,12 @@ local function horizonte(c: Vector3, padre: Instance)
 	for i = -n, n do
 		for j = -n, n do
 			local cx, cz = i * tam, j * tam
-			-- solo fuera del agua de terreno
-			if math.abs(cx) + tam / 2 > MAR.RADIO or math.abs(cz) + tam / 2 > MAR.RADIO then
+			-- solo fuera del agua de terreno, y nunca sobre la selva: el horizonte llega a 9000 studs
+			-- y la selva está a 6000 del lobby; a la altura del mar tapaba los valles con una lámina
+			-- de "agua" sin física que se atravesaba (el claro inicial salía inundado)
+			local mundo = c + Vector3.new(cx, 0, cz)
+			local sobreSelva = math.abs(mundo.X) < SELVA + tam / 2 and math.abs(mundo.Z) < SELVA + tam / 2
+			if not sobreSelva and (math.abs(cx) + tam / 2 > MAR.RADIO or math.abs(cz) + tam / 2 > MAR.RADIO) then
 				Kit.parte(
 					m,
 					CFrame.new(c + Vector3.new(cx, -0.3, cz)),
