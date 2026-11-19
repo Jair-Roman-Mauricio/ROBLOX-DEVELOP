@@ -20,6 +20,7 @@ local Remotes = require(script.Parent.Remotes)
 local Generador = require(script.Parent.Mundo.Generador)
 local Intro = require(script.Parent.Intro)
 local Serpiente = require(script.Parent.Monstruos.Serpiente)
+local Saltos = require(script.Parent.Saltos)
 local Terreno = require(script.Parent.Mundo.Terreno)
 
 local estado = Remotes.Estado
@@ -145,8 +146,23 @@ function Partida.iniciar(grupo: { Player }, helipuerto: Model?)
 			hum.Died:Once(function()
 				if table.find(jugadores, pl) then
 					quitar(pl)
+					-- CONTEXT.md: la pantalla de muerte identifica al responsable
+					local char = pl.Character
+					local por: any = char and char:GetAttribute("UltimoAtacante")
+					local en: any = char and char:GetAttribute("UltimoAtaqueEn")
+					local culpable = if typeof(por) == "string"
+							and typeof(en) == "number"
+							and workspace:GetServerTimeNow() - en < 10
+						then por
+						else nil
+					if culpable then
+						Remotes.Aviso:FireClient(pl, ("Eliminado por %s"):format(culpable), 5)
+					end
 					for _, otro in jugadores do
-						Remotes.Aviso:FireClient(otro, ("%s ha caído."):format(pl.DisplayName), 4)
+						local texto = if culpable
+							then ("%s fue eliminado por %s."):format(pl.DisplayName, culpable)
+							else ("%s ha caído."):format(pl.DisplayName)
+						Remotes.Aviso:FireClient(otro, texto, 4)
 					end
 				end
 			end)
@@ -169,7 +185,10 @@ function Partida.iniciar(grupo: { Player }, helipuerto: Model?)
 		-- el primero del grupo protagoniza el embarque
 		Remotes.Cinematica:FireClient(pl, helipuerto, jugadores[1])
 	end
-	task.wait(Config.Lobby.CINEMATICA)
+	-- "Saltar cinemática": si todo el grupo vota, se pasa directo a la cabina
+	local votacion = Saltos.abrir("cinematica", jugadores)
+	Saltos.esperar(votacion, Config.Lobby.CINEMATICA)
+	Saltos.cerrar(votacion)
 
 	-- dentro del helicóptero: piloto, posesión, 30 segundos y salto
 	local vivos = {}

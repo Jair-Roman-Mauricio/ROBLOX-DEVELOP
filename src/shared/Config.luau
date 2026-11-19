@@ -357,8 +357,59 @@ Config.Linterna = {
 	ESPERA = 0.25, -- segundos mínimos entre pulsaciones (lo valida el servidor)
 }
 
+-- Fauna. PROPUESTA: el catálogo de amenazas sigue abierto en CONTEXT.md; valores para probar.
+-- Velocidades pensadas contra el WalkSpeed por defecto (16): el jaguar solo es más rápido en la
+-- embestida corta, así que siempre se le puede dejar atrás (baúl: Horror Monster Chase AI).
+Config.Fauna = {
+	JAGUARES = 5, -- 0 = sin jaguares
+	JAGUAR = {
+		VELOCIDAD = { Merodea = 6, Acecha = 9, Agazapa = 0, Embiste = 24, Persigue = 13, Huye = 18, Vuelve = 8 },
+		GIRO = 5, -- rapidez de giro
+		VISTA = 60, -- studs
+		CONO = 70, -- medio ángulo de visión, en grados
+		SENTIR = 10, -- te nota a esta distancia aunque esté de espaldas
+		PERDER = 4, -- segundos sin verte antes de rendirse
+		EMBESTIDA_DISTANCIA = 22,
+		AGAZAPADO = 0.7, -- aviso antes de saltar
+		EMBESTIDA_SEGUNDOS = 1.4,
+		EMBESTIDA_ENFRIAMIENTO = 6,
+		ALCANCE = 5.5,
+		DANO = 35,
+		ENFRIAMIENTO_JUGADOR = 2.5, -- un mismo jugador no recibe mordiscos más seguidos que esto
+		GRACIA = 25, -- segundos tras aterrizar en los que no ataca
+		CORREA = 180, -- distancia máxima a su territorio
+		PATRULLA = 80, -- radio de paseo
+		PAUSA = { 2, 6 },
+		DESPERTAR = 260, -- solo piensa con un jugador a esta distancia
+		DISTANCIA_ZONAS = 70, -- su territorio queda al menos a esto de cualquier zona
+		AHUYENTAR = {
+			GRUPO = 2, -- jugadores juntos cerca que lo hacen huir
+			RADIO_GRUPO = 16,
+			ENCARAR_DISTANCIA = 18,
+			ENCARAR_ANGULO = 30,
+			ENCARAR_SEGUNDOS = 1.2, -- plantarle cara este tiempo mientras acecha
+			HUIDA = 8,
+			MIEDO = 20, -- tras huir, no vuelve a acechar en este tiempo
+		},
+	},
+	-- Aves solo visuales, en cada cliente (no afectan al juego)
+	AVES = {
+		BANDADAS = 3,
+		POR_BANDADA = { 4, 7 },
+		ALTURA = { 40, 62 }, -- sobre el suelo, por encima del dosel
+		RADIO = { 22, 46 },
+		VELOCIDAD = { 16, 24 },
+		RECICLAR = 320, -- una bandada más lejos que esto reaparece cerca del jugador
+		SUSTO = { 35, 80 }, -- cada cuánto sale una bandada asustada de entre los árboles
+	},
+}
+
 -- Presets locales. Por petición del equipo, la selva apenas revela siluetas: la
 -- lectura del suelo depende de la linterna y de las luces locales de los lugares.
+
+-- Presets de iluminación que aplica cada cliente. Base: receta "Readable night" del baúl
+-- (07 Lighting VFX and Audio/Stylized Lighting Recipes): la noche se marca con tono azul y
+-- menos saturación, no con oscuridad. Debe verse una silueta a 50 studs.
 Config.Iluminacion = {
 	-- tormenta en el mar del Norte (como los renders de la plataforma): cielo gris, luz fría,
 	-- neblina que se come el horizonte

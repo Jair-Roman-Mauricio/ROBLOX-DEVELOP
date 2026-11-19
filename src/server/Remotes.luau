@@ -27,6 +27,7 @@ local Remotes = {
 	Intro = evento("Intro"), -- servidor → cliente: ("salto", destino, mirar) | ("choque")
 	Linterna = evento("Linterna"), -- cliente → servidor: (encender: boolean)
 	Serpiente = evento("Serpiente"), -- servidor → cliente: ("pasada", Pasada) | ("fin")
+	Saltar = evento("Saltar"), -- cliente → servidor: ("despegue" | "cinematica") vota saltar la espera
 	Estado = estado,
 }
 

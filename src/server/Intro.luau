@@ -15,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Cabina = require(script.Parent.Modelos.Cabina)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(script.Parent.Remotes)
+local Saltos = require(script.Parent.Saltos)
 
 local I = Config.Intro
 
@@ -112,17 +113,28 @@ function Intro.ejecutar(grupo: { Player }, destinos: { Vector3 }, mirar: Vector3
 		end
 	end
 
-	-- charla y posesión
+	-- charla y posesión; "Saltar cinemática" (todos votan) pasa directo a la cuenta atrás
+	local votacion = Saltos.abrir("cinematica", dentro)
 	local posesion = false
 	for i, linea in I.LINEAS do
 		if linea.poseido and not posesion then
 			posesion = true
 			modelo:SetAttribute("Fase", "posesion")
-			task.wait(I.PAUSA_POSESION)
+			if Saltos.esperar(votacion, I.PAUSA_POSESION) then
+				break
+			end
 		end
 		modelo:SetAttribute("Linea", i)
-		task.wait(linea.segundos)
+		if Saltos.esperar(votacion, linea.segundos) then
+			break
+		end
 	end
+	if votacion.hecha and not posesion then
+		-- un instante de tormenta para que la cuenta atrás no empiece a plena luz
+		modelo:SetAttribute("Fase", "posesion")
+		task.wait(1.5)
+	end
+	Saltos.cerrar(votacion)
 
 	-- cuenta atrás
 	local fin = workspace:GetServerTimeNow() + I.CUENTA
