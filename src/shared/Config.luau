@@ -447,7 +447,7 @@ Config.Iluminacion = {
 		Niebla = 0,
 	},
 	-- Selva: muy oscura, pero sin linterna se distinguen las siluetas de troncos, suelo y
-	-- compañeros a unos 30-40 studs. Antes era negro total (Ambient 3,4,6, Brightness 0) y fuera
+	-- compañeros a unos 40 studs aun bajo el dosel. Antes era negro total (Ambient 3,4,6, Brightness 0) y fuera
 	-- de la linterna y las fogatas no se veía nada. Punto medio entre la "selva oscura" que
 	-- pidió el equipo y la receta "Readable night" del baúl (07 Lighting VFX and Audio/
 	-- Stylized Lighting Recipes): la noche se marca con tono azul, no con negro.
@@ -455,20 +455,20 @@ Config.Iluminacion = {
 	Noche = {
 		Lighting = {
 			ClockTime = 0,
-			Brightness = 0.3,
-			Ambient = Color3.fromRGB(24, 30, 44),
-			OutdoorAmbient = Color3.fromRGB(40, 50, 74),
+			Brightness = 0.5,
+			Ambient = Color3.fromRGB(46, 54, 80),
+			OutdoorAmbient = Color3.fromRGB(64, 76, 110),
 			ColorShift_Top = Color3.fromRGB(90, 110, 170),
 			ColorShift_Bottom = Color3.new(0, 0, 0),
 			EnvironmentDiffuseScale = 0.12,
 			EnvironmentSpecularScale = 0.15,
-			ExposureCompensation = 0,
+			ExposureCompensation = 0.15,
 		},
 		Atmosphere = {
-			Density = 0.38,
+			Density = 0.34,
 			Offset = 0.05,
-			Color = Color3.fromRGB(24, 32, 48),
-			Decay = Color3.fromRGB(10, 14, 24),
+			Color = Color3.fromRGB(40, 50, 72),
+			Decay = Color3.fromRGB(20, 26, 40),
 			Glare = 0,
 			Haze = 1.6,
 		},
