@@ -446,29 +446,33 @@ Config.Iluminacion = {
 		Luciernagas = 0,
 		Niebla = 0,
 	},
-	-- Selva: oscuridad casi total; solo siluetas sin linterna. Las luces locales de
-	-- edificios y antorchas siguen iluminando porque no se modifica ninguna de ellas.
+	-- Selva: muy oscura, pero sin linterna se distinguen las siluetas de troncos, suelo y
+	-- compañeros a unos 30-40 studs. Antes era negro total (Ambient 3,4,6, Brightness 0) y fuera
+	-- de la linterna y las fogatas no se veía nada. Punto medio entre la "selva oscura" que
+	-- pidió el equipo y la receta "Readable night" del baúl (07 Lighting VFX and Audio/
+	-- Stylized Lighting Recipes): la noche se marca con tono azul, no con negro.
+	-- Las luces locales de edificios y antorchas no se tocan.
 	Noche = {
 		Lighting = {
 			ClockTime = 0,
-			Brightness = 0,
-			Ambient = Color3.fromRGB(3, 4, 6),
-			OutdoorAmbient = Color3.fromRGB(5, 7, 10),
-			ColorShift_Top = Color3.new(0, 0, 0),
+			Brightness = 0.3,
+			Ambient = Color3.fromRGB(24, 30, 44),
+			OutdoorAmbient = Color3.fromRGB(40, 50, 74),
+			ColorShift_Top = Color3.fromRGB(90, 110, 170),
 			ColorShift_Bottom = Color3.new(0, 0, 0),
-			EnvironmentDiffuseScale = 0.02,
-			EnvironmentSpecularScale = 0.08,
-			ExposureCompensation = -0.35,
+			EnvironmentDiffuseScale = 0.12,
+			EnvironmentSpecularScale = 0.15,
+			ExposureCompensation = 0,
 		},
 		Atmosphere = {
 			Density = 0.38,
 			Offset = 0.05,
-			Color = Color3.fromRGB(12, 18, 26),
-			Decay = Color3.fromRGB(3, 5, 9),
+			Color = Color3.fromRGB(24, 32, 48),
+			Decay = Color3.fromRGB(10, 14, 24),
 			Glare = 0,
 			Haze = 1.6,
 		},
-		Bloom = { Intensity = 0.15, Size = 18, Threshold = 1.8 },
+		Bloom = { Intensity = 0.4, Size = 22, Threshold = 1.2 }, -- antorchas y hongos brillan
 		Color = { Brightness = 0, Contrast = 0.14, Saturation = -0.25, TintColor = Color3.fromRGB(230, 237, 250) },
 		Rayos = { Intensity = 0, Spread = 0.6 },
 		Luciernagas = 12,

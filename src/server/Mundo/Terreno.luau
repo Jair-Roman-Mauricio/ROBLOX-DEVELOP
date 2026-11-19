@@ -36,6 +36,9 @@ local AN = A.ARROYO_ANCHO
 local BLOQUE = 64 -- celdas por lado en cada escritura
 
 local M = Enum.Material
+-- Guijarros de arroyos y rápidos. Enum.Material.Pebble solo existe para partes: el terreno lo
+-- rechaza ("Invalid terrain material") y eso cortaba Terreno.estilo antes de pintar el agua.
+local GRAVA = M.Limestone
 
 export type Datos = {
 	alturas: { number },
@@ -611,11 +614,11 @@ function Terreno.calcular(disp: Disposicion.Disposicion, rng: Random, semilla: n
 			elseif pend > 1.6 then
 				mat = M.Rock
 			elseif distArroyo[i] < AN + 1 then
-				mat = if azar < 0.55 then M.Pebble else M.Ground
+				mat = if azar < 0.55 then GRAVA else M.Ground
 			elseif distArroyo[i] < AN + 5 then
 				mat = if azar < 0.7 then M.Mud else M.LeafyGrass
 			elseif distRapido[i] < A.RAPIDO_LARGO and dr < RIO then
-				mat = if azar < 0.6 then M.Pebble else M.Rock
+				mat = if azar < 0.6 then GRAVA else M.Rock
 			elseif distCocha[i] < 17 then
 				mat = M.Mud
 			elseif h < AGUA + 0.5 and dr < RIO + ORILLA then
@@ -796,7 +799,7 @@ function Terreno.estilo()
 		terreno:SetMaterialColor(M.Slate, Color3.fromRGB(74, 76, 68))
 		terreno:SetMaterialColor(M.Cobblestone, Color3.fromRGB(82, 84, 74))
 		terreno:SetMaterialColor(M.Sand, Color3.fromRGB(86, 76, 60))
-		terreno:SetMaterialColor(M.Pebble, Color3.fromRGB(78, 76, 68))
+		terreno:SetMaterialColor(GRAVA, Color3.fromRGB(78, 76, 68))
 		terreno.WaterColor = Color3.fromRGB(34, 58, 52)
 		terreno.WaterTransparency = 0.55
 		terreno.WaterReflectance = 0.6
