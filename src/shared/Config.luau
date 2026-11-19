@@ -280,6 +280,18 @@ Config.VegetacionStore = {
 	},
 }
 
+-- Ciclo de día y noche de la selva (server/Ciclo.luau). PROPUESTA: duración y ritmo del día y
+-- la noche siguen abiertos en CONTEXT.md. Con ACTIVO = false la selva es siempre de noche y
+-- vuelve a mandar el atributo SelvaDia puesto a mano.
+Config.Ciclo = {
+	ACTIVO = true,
+	DURACION = 1200, -- segundos reales por día completo (20 min: ~7,5 min de noche, 10 de día)
+	HORA_INICIO = 21, -- el equipo aterriza de noche
+	AMANECER = 6,
+	ANOCHECER = 18.5,
+	TRANSICION = 20, -- segundos que dura el paso de la luz de noche a la de día y al revés
+}
+
 Config.Partida = {
 	-- Primera persona estable: tensión por encuadre y periferia, sin movimiento artificial.
 	Camara = {

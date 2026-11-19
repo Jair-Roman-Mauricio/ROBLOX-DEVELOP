@@ -312,6 +312,13 @@ function Serpiente.iniciar(mundo: Generador.Mundo)
 		task.wait(if rapida then 8 else rng:NextNumber(S.PRIMERA[1], S.PRIMERA[2]))
 		local primera = true
 		while generacion == gen do
+			-- de día no hay anomalías (CONTEXT.md; la hora la lleva server/Ciclo.luau)
+			while generacion == gen and workspace:GetAttribute("SelvaDia") == true do
+				task.wait(2)
+			end
+			if generacion ~= gen then
+				break
+			end
 			pasada(mundo, rng, primera, gen)
 			primera = false
 			if generacion ~= gen then

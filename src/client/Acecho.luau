@@ -280,6 +280,10 @@ function Acecho.despertar(desde: number)
 			task.wait(1)
 		end
 		while gen == generacion and enSelva() do
+			-- de día no hay anomalías (CONTEXT.md): espera a que anochezca
+			while gen == generacion and workspace:GetAttribute("SelvaDia") == true do
+				task.wait(2)
+			end
 			local nombre = elegir()
 			anterior = nombre
 			if EVENTOS[nombre]() == false then

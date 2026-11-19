@@ -17,6 +17,7 @@ local Lobby = require(script.Lobby.Lobby)
 local Partida = require(script.Partida)
 local Portales = require(script.Lobby.Portales)
 require(script.Remotes)
+require(script.Ciclo)
 require(script.Linterna).iniciar()
 
 -- restos de la plantilla del place: solo en juego, no se guarda en el place
